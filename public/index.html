@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Kepemilikan Saham | KSEI</title>
+  <meta name="description" content="Dashboard analisis kepemilikan saham perusahaan terbuka Indonesia berdasarkan data KSEI">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-inner">
+      <h1><span class="icon">📊</span> Dashboard Kepemilikan Saham</h1>
+      <div class="header-actions">
+        <button id="viewDashboardBtn" class="btn btn-secondary" style="display:none">🏠 Dashboard</button>
+        <button id="viewKongloBtn" class="btn btn-secondary">👑 Konglomerat</button>
+        <button id="adminBtn" class="btn btn-primary">⚙️ Admin</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT -->
+  <main class="main">
+
+    <div id="dashboardView">
+      <!-- SEARCH BAR -->
+    <section class="search-section">
+      <div class="search-wrapper">
+        <span class="search-icon">🔍</span>
+        <input type="text" class="search-input" id="searchInput" 
+               placeholder="Cari kode saham, nama emiten, atau investor...">
+        <div class="search-results" id="searchResults"></div>
+      </div>
+    </section>
+
+    <!-- STATS CARDS -->
+    <section class="stats-grid" id="statsGrid">
+      <div class="stat-card blue">
+        <div class="stat-icon">🏢</div>
+        <div class="stat-label">Total Emiten</div>
+        <div class="stat-value" id="statIssuers">—</div>
+      </div>
+      <div class="stat-card emerald">
+        <div class="stat-icon">👥</div>
+        <div class="stat-label">Total Investor</div>
+        <div class="stat-value" id="statInvestors">—</div>
+      </div>
+      <div class="stat-card rose">
+        <div class="stat-icon">📋</div>
+        <div class="stat-label">Total Record</div>
+        <div class="stat-value" id="statRecords">—</div>
+      </div>
+      <div class="stat-card violet">
+        <div class="stat-icon">📈</div>
+        <div class="stat-label">Rata-rata Kepemilikan</div>
+        <div class="stat-value" id="statAvgPct">—</div>
+      </div>
+      <div class="stat-card amber">
+        <div class="stat-icon">🏆</div>
+        <div class="stat-label">Kepemilikan Tertinggi</div>
+        <div class="stat-value" id="statMaxPct">—</div>
+      </div>
+    </section>
+
+    <!-- CHARTS ROW -->
+    <section class="panels-grid">
+      <!-- LOCAL vs FOREIGN PIE -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title"><span class="emoji">🌐</span> Lokal vs Asing</div>
+        </div>
+        <div class="panel-chart">
+          <canvas id="chartLocalForeign"></canvas>
+        </div>
+      </div>
+
+      <!-- INVESTOR TYPE BREAKDOWN -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title"><span class="emoji">🏷️</span> Tipe Investor</div>
+        </div>
+        <div class="panel-chart">
+          <canvas id="chartInvestorTypes"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- TOP HOLDINGS CHART -->
+    <section class="panels-grid">
+      <div class="panel panel-full">
+        <div class="panel-header">
+          <div class="panel-title"><span class="emoji">💎</span> Top 15 Kepemilikan Terbesar (%)</div>
+        </div>
+        <div class="panel-chart" style="height: 400px;">
+          <canvas id="chartTopHoldings"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- TABLES ROW -->
+    <section class="panels-grid">
+      <!-- TOP INVESTORS TABLE -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title"><span class="emoji">🏅</span> Top Investor (Terbanyak di Perusahaan)</div>
+        </div>
+        <div class="panel-body">
+          <div class="table-wrapper">
+            <table class="data-table" id="topInvestorsTable">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Nama Investor</th>
+                  <th>Tipe</th>
+                  <th>L/A</th>
+                  <th style="text-align:right">Perusahaan</th>
+                  <th style="text-align:right">Avg %</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- MOST DISTRIBUTED ISSUERS TABLE -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title"><span class="emoji">🔗</span> Emiten Terbanyak Pemegang Saham Besar</div>
+        </div>
+        <div class="panel-body">
+          <div class="table-wrapper">
+            <table class="data-table" id="mostDistributedTable">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Kode</th>
+                  <th>Emiten</th>
+                  <th style="text-align:right">Jumlah</th>
+                  <th style="text-align:right">Total %</th>
+                  <th style="text-align:right">Max %</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ALL ISSUERS TABLE -->
+    <section class="panels-grid">
+      <div class="panel panel-full">
+        <div class="panel-header">
+          <div class="panel-title"><span class="emoji">📑</span> Semua Emiten</div>
+        </div>
+        <div class="panel-body">
+          <div class="table-wrapper" style="max-height: 550px;">
+            <table class="data-table" id="issuersTable">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Kode Saham</th>
+                  <th>Nama Emiten</th>
+                  <th style="text-align:right">Jml Investor</th>
+                  <th style="text-align:right">Total %</th>
+                  <th style="text-align:right">Kepemilikan Max</th>
+                  <th>Tipe</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+    </div> <!-- /dashboardView -->
+
+    <div id="kongloView" style="display: none;">
+      <section class="panels-grid">
+        <div class="panel panel-full">
+          <div class="panel-header">
+            <div class="panel-title"><span class="emoji">👑</span> Data Konglomerat Utama</div>
+            <div class="panel-subtitle">Daftar konglomerat, grup bisnis, dan saham yang dimiliki.</div>
+          </div>
+          <div class="panel-body">
+            <div class="table-wrapper" style="max-height: 700px;">
+              <table class="data-table" id="kongloTable">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Nama Konglomerat</th>
+                    <th>Grup Bisnis</th>
+                    <th>Peran</th>
+                    <th>Sektor</th>
+                    <th>Saham / Emiten</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div> <!-- /kongloView -->
+
+  </main>
+
+  <!-- MODAL for Admin Upload -->
+  <div class="modal-overlay" id="adminModalOverlay">
+    <div class="modal admin-modal">
+      <div class="modal-header">
+        <h2><span class="emoji">📁</span> Upload Data PDF KSEI</h2>
+        <button class="modal-close" id="adminModalClose">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="uploadForm" class="upload-form">
+          <div class="file-drop-area" id="fileDropArea">
+            <span class="upload-icon">📄</span>
+            <p>Pilih file PDF laporan KSEI untuk diekstrak.</p>
+            <input type="file" id="pdfFileInput" name="pdfFile" accept="application/pdf" required>
+          </div>
+          <div id="selectedFileName" class="selected-file-name"></div>
+          <button type="submit" class="btn btn-primary btn-submit" id="uploadBtn" style="margin-top:1rem; width:100%;">Upload & Ekstrak Data</button>
+        </form>
+        <div id="uploadStatus" class="upload-status" style="margin-top:1rem; font-size:0.9rem; text-align:center;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL for Issuer Detail -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>
+          <span class="share-code" id="modalShareCode"></span>
+          <span id="modalIssuerName"></span>
+        </h2>
+        <button class="modal-close" id="modalClose">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="table-wrapper">
+          <table class="data-table" id="modalTable">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Investor</th>
+                <th>Tipe</th>
+                <th>L/A</th>
+                <th>Kebangsaan</th>
+                <th>Domisili</th>
+                <th style="text-align:right">Scripless</th>
+                <th style="text-align:right">Scrip</th>
+                <th style="text-align:right">Total Saham</th>
+                <th style="text-align:right">%</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,282 @@
+[
+  {
+    "konglomerat": "Prajogo Pangestu",
+    "group": "Barito Pacific Group",
+    "stocks": ["BRPT", "TPIA", "BREN", "CUAN", "PTRO"],
+    "sector": ["Petrochemical", "Energy", "Renewable", "Mining"],
+    "role": "Founder / Controlling Shareholder"
+  },
+  {
+    "konglomerat": "Anthoni Salim",
+    "group": "Salim Group",
+    "stocks": ["ICBP", "INDF", "LSIP", "SIMP", "BUMI", "BRMS", "DNET", "ROTI", "AMMN"],
+    "sector": ["Food & Beverage", "Agribusiness", "Mining", "Retail"],
+    "role": "Controlling Shareholder"
+  },
+  {
+    "konglomerat": "Robert Budi Hartono & Michael Bambang Hartono",
+    "group": "Djarum Group",
+    "stocks": ["BBCA", "TOWR", "BLIB", "SUPR"],
+    "sector": ["Banking", "Telecommunication", "E-commerce"],
+    "role": "Founder / Controlling Shareholder"
+  },
+  {
+    "konglomerat": "Chairul Tanjung",
+    "group": "CT Corp",
+    "stocks": ["MEGA", "BBHI", "GIAA", "AMAR"],
+    "sector": ["Banking", "Aviation", "Financial Services"],
+    "role": "Founder / Controlling Shareholder"
+  },
+  {
+    "konglomerat": "Garibaldi 'Boy' Thohir",
+    "group": "Adaro Group",
+    "stocks": ["ADRO", "ADMR", "ESSA", "MBMA", "BFIN", "GOTO"],
+    "sector": ["Coal Mining", "Minerals", "Financials", "Technology"],
+    "role": "Founder / Major Shareholder"
+  },
+  {
+    "konglomerat": "Edwin Soeryadjaya",
+    "group": "Saratoga Group",
+    "stocks": ["SRTG", "MDKA", "ADRO", "MPMX", "PALM", "TBIG"],
+    "sector": ["Investment", "Mining", "Infrastructure"],
+    "role": "Co-Founder / Major Shareholder"
+  },
+  {
+    "konglomerat": "Sandiaga Uno",
+    "group": "Saratoga Group",
+    "stocks": ["SRTG", "MPMX"],
+    "sector": ["Investment", "Automotive"],
+    "role": "Co-Founder / Major Shareholder"
+  },
+  {
+    "konglomerat": "Mochtar Riady & James Riady",
+    "group": "Lippo Group",
+    "stocks": ["LPKR", "LPCK", "SILO", "LPPF", "MLPL", "MPPA", "NOBU", "LINK"],
+    "sector": ["Property", "Healthcare", "Retail", "Technology", "Banking"],
+    "role": "Founder / Controlling Shareholder"
+  },
+  {
+    "konglomerat": "Franky Widjaja",
+    "group": "Sinar Mas Group",
+    "stocks": ["BSDE", "DUTI", "DMAS", "INKP", "TKIM", "SMAR", "DSSA", "SMMA", "BSIM"],
+    "sector": ["Property", "Paper", "Agribusiness", "Energy", "Financial Services"],
+    "role": "Controlling Shareholder"
+  },
+  {
+    "konglomerat": "Aburizal Bakrie",
+    "group": "Bakrie Group",
+    "stocks": ["BUMI", "BRMS", "BNBR", "ENRG", "VKTR", "UNSP", "DEWA", "VIVA", "MDIA"],
+    "sector": ["Mining", "Energy", "Property", "Media", "Electric Vehicles"],
+    "role": "Founder / Controlling Shareholder"
+  },
+  {
+    "konglomerat": "Hary Tanoesoedibjo",
+    "group": "MNC Group",
+    "stocks": ["BMTR", "MNCN", "MSIN", "BHIT", "KPIG", "BABP", "BCAP", "IPTV"],
+    "sector": ["Media", "Property", "Financial Services"],
+    "role": "Founder / Controlling Shareholder"
+  },
+  {
+    "konglomerat": "Low Tuck Kwong",
+    "group": "Bayan Group",
+    "stocks": ["BYAN"],
+    "sector": ["Coal Mining"],
+    "role": "Founder / Controlling Shareholder"
+  },
+  {
+    "konglomerat": "Theodore Permadi Rachmat",
+    "group": "Triputra Group",
+    "stocks": ["TAPG", "ASSA", "DSNG", "DRMA", "SMSM"],
+    "sector": ["Agribusiness", "Automotive", "Logistics", "Manufacturing"],
+    "role": "Founder / Controlling Shareholder"
+  },
+  {
+    "konglomerat": "Hermanto Tanoko",
+    "group": "Tancorp Group",
+    "stocks": ["AVIA", "CLEO", "PEVE", "RISE", "ZONE", "CAKK"],
+    "sector": ["Consumer Goods", "Property", "Retail", "Manufacturing"],
+    "role": "Founder / Controlling Shareholder"
+  },
+  {
+    "konglomerat": "Lo Kheng Hong",
+    "group": "Independent Investor",
+    "stocks": ["BMTR", "GJTL", "CFIN", "ABMM", "NISP", "DILD", "INTP", "PNIN", "PNLF"],
+    "sector": ["Media", "Automotive", "Financials", "Banking", "Property"],
+    "role": "Value Investor / Major Shareholder"
+  },
+  {
+    "konglomerat": "Djoko Susanto",
+    "group": "Alfamart Group",
+    "stocks": ["AMRT", "MIDI"],
+    "sector": ["Retail"],
+    "role": "Founder / Controlling Shareholder"
+  },
+  {
+    "konglomerat": "Susilo Wonowidjojo",
+    "group": "Gudang Garam Group",
+    "stocks": ["GGRM"],
+    "sector": ["Tobacco"],
+    "role": "Controlling Shareholder"
+  },
+  {
+    "konglomerat": "Tahir",
+    "group": "Mayapada Group",
+    "stocks": ["MAYA", "SRAJ"],
+    "sector": ["Banking", "Healthcare"],
+    "role": "Founder / Controlling Shareholder"
+  },
+  {
+    "konglomerat": "Eddy Kusnadi Sariaatmadja",
+    "group": "Emtek Group",
+    "stocks": ["EMTK", "SCMA", "BUKA", "SAME"],
+    "sector": ["Media", "Technology", "Healthcare"],
+    "role": "Founder / Controlling Shareholder"
+  },
+  {
+    "konglomerat": "Sjamsul Nursalim",
+    "group": "Gajah Tunggal / MAP Group",
+    "stocks": ["GJTL", "MAPI", "MAPA", "MAPB"],
+    "sector": ["Automotive", "Retail"],
+    "role": "Founder / Controlling Shareholder"
+  },
+  {
+    "konglomerat": "Boenjamin Setiawan Family",
+    "group": "Kalbe Group",
+    "stocks": ["KLBF", "HEAL"],
+    "sector": ["Healthcare", "Pharmaceuticals"],
+    "role": "Founder / Controlling Shareholder"
+  },
+  {
+    "konglomerat": "Peter Sondakh",
+    "group": "Rajawali Corpora",
+    "stocks": ["BWPT", "TAXI", "FORU", "GOLD", "ARTI"],
+    "sector": ["Agribusiness", "Transportation", "Media", "Property"],
+    "role": "Founder / Controlling Shareholder"
+  },
+  {
+    "konglomerat": "Alexander Tedja",
+    "group": "Pakuwon Group",
+    "stocks": ["PWON"],
+    "sector": ["Property"],
+    "role": "Founder / Controlling Shareholder"
+  },
+  {
+    "konglomerat": "Kuncoro Wibowo",
+    "group": "Kawan Lama Group",
+    "stocks": ["ACES"],
+    "sector": ["Retail"],
+    "role": "Founder / Controlling Shareholder"
+  },
+  {
+    "konglomerat": "Soegiarto Adikoesoemo",
+    "group": "AKR Corporindo",
+    "stocks": ["AKRA"],
+    "sector": ["Energy", "Chemicals", "Logistics"],
+    "role": "Founder / Controlling Shareholder"
+  },
+  {
+    "konglomerat": "Jogi Hendra Atmadja",
+    "group": "Mayora Group",
+    "stocks": ["MYOR"],
+    "sector": ["Food & Beverage"],
+    "role": "Founder / Controlling Shareholder"
+  },
+  {
+    "konglomerat": "Sugianto Kusuma (Aguan)",
+    "group": "Agung Sedayu Group",
+    "stocks": ["PANI"],
+    "sector": ["Property"],
+    "role": "Founder / Controlling Shareholder"
+  },
+  {
+    "konglomerat": "Trihatma Kusuma Haliman",
+    "group": "Agung Podomoro Group",
+    "stocks": ["APLN"],
+    "sector": ["Property"],
+    "role": "Controlling Shareholder"
+  },
+  {
+    "konglomerat": "Ciputra Family",
+    "group": "Ciputra Group",
+    "stocks": ["CTRA"],
+    "sector": ["Property"],
+    "role": "Founder / Controlling Shareholder"
+  },
+  {
+    "konglomerat": "Tommy Winata",
+    "group": "Artha Graha Network",
+    "stocks": ["INPC", "JIHD"],
+    "sector": ["Banking", "Property"],
+    "role": "Founder / Controlling Shareholder"
+  },
+  {
+    "konglomerat": "Mu'min Ali Gunawan",
+    "group": "Panin Group",
+    "stocks": ["PNBN", "PNLF", "PNIN", "CFIN", "PANS"],
+    "sector": ["Banking", "Financial Services"],
+    "role": "Founder / Controlling Shareholder"
+  },
+  {
+    "konglomerat": "Erick Thohir",
+    "group": "Mahaka Group",
+    "stocks": ["ABBA", "MARI"],
+    "sector": ["Media"],
+    "role": "Founder / Major Shareholder"
+  },
+  {
+    "konglomerat": "Kiki Barki",
+    "group": "Harum Energy",
+    "stocks": ["HRUM", "NICL"],
+    "sector": ["Coal Mining", "Nickel"],
+    "role": "Founder / Controlling Shareholder"
+  },
+  {
+    "konglomerat": "Husodo Angkosubroto",
+    "group": "Gunung Sewu Group",
+    "stocks": ["DART", "SSIA"],
+    "sector": ["Property", "Agribusiness", "Infrastructure"],
+    "role": "Controlling Shareholder"
+  },
+  {
+    "konglomerat": "Irwan Hidayat",
+    "group": "Sido Muncul Group",
+    "stocks": ["SIDO"],
+    "sector": ["Consumer Health", "Pharmaceuticals"],
+    "role": "Controlling Shareholder"
+  },
+  {
+    "konglomerat": "Sudhamek AWS",
+    "group": "GarudaFood Group",
+    "stocks": ["GOOD"],
+    "sector": ["Food & Beverage"],
+    "role": "Controlling Shareholder"
+  },
+  {
+    "konglomerat": "Manoj Punjabi",
+    "group": "MD Entertainment",
+    "stocks": ["FILM", "NETV"],
+    "sector": ["Media & Entertainment"],
+    "role": "Founder / Controlling Shareholder"
+  },
+  {
+    "konglomerat": "Jusuf Kalla",
+    "group": "Bukaka Group",
+    "stocks": ["BUKK"],
+    "sector": ["Manufacturing", "Infrastructure"],
+    "role": "Founder / Major Shareholder"
+  },
+  {
+    "konglomerat": "Martua Sitorus",
+    "group": "Cemindo / Wilmar Network",
+    "stocks": ["CMNT", "CBUT"],
+    "sector": ["Cement", "Agribusiness"],
+    "role": "Founder / Major Shareholder"
+  },
+  {
+    "konglomerat": "Eka Tjandranegara",
+    "group": "Mulia Group",
+    "stocks": ["MLIA"],
+    "sector": ["Manufacturing", "Property"],
+    "role": "Founder / Controlling Shareholder"
+  }
+]
