@@ -15,8 +15,6 @@
     <div class="header-inner">
       <h1><span class="icon">📊</span> Dashboard Kepemilikan Saham</h1>
       <div class="header-actions">
-        <button id="viewDashboardBtn" class="btn btn-secondary" style="display:none">🏠 Dashboard</button>
-        <button id="viewKongloBtn" class="btn btn-secondary">👑 Konglomerat</button>
         <button id="adminBtn" class="btn btn-primary">⚙️ Admin</button>
       </div>
     </div>
@@ -24,15 +22,18 @@
 
   <!-- MAIN CONTENT -->
   <main class="main">
-
-    <div id="dashboardView">
       <!-- SEARCH BAR -->
     <section class="search-section">
-      <div class="search-wrapper">
-        <span class="search-icon">🔍</span>
-        <input type="text" class="search-input" id="searchInput" 
-               placeholder="Cari kode saham, nama emiten, atau investor...">
-        <div class="search-results" id="searchResults"></div>
+      <div class="search-wrapper" style="display:flex; gap:10px;">
+        <div style="flex:1; position:relative;">
+          <span class="search-icon">🔍</span>
+          <input type="text" class="search-input" id="searchInput" 
+                 placeholder="Cari kode saham, nama emiten, atau investor...">
+          <div class="search-results" id="searchResults"></div>
+        </div>
+        <select id="dateFilter" class="search-input" style="width: auto; min-width: 150px; padding-left: 1rem; border:1px solid rgba(148, 163, 184, 0.2);">
+          <option value="">Semua Data / Terbaru</option>
+        </select>
       </div>
     </section>
 
@@ -151,6 +152,35 @@
       </div>
     </section>
 
+    <!-- KEPEMILIKAN 1 - 5% TABLE -->
+    <section class="panels-grid">
+      <div class="panel panel-full">
+        <div class="panel-header">
+          <div class="panel-title"><span class="emoji">🔍</span> Kepemilikan 1% - 5.99% (Aturan Baru BEI)</div>
+          <div class="panel-subtitle">Investor yang baru tercatat karena di atas 1% namun di bawah 6%.</div>
+        </div>
+        <div class="panel-body">
+          <div class="table-wrapper" style="max-height: 400px;">
+            <table class="data-table" id="fractionalOwnersTable">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Kode</th>
+                  <th>Emiten</th>
+                  <th>Nama Investor</th>
+                  <th>Tipe</th>
+                  <th>L/A</th>
+                  <th style="text-align:right">Saham</th>
+                  <th style="text-align:right">%</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- ALL ISSUERS TABLE -->
     <section class="panels-grid">
       <div class="panel panel-full">
@@ -177,9 +207,7 @@
         </div>
       </div>
     </section>
-    </div> <!-- /dashboardView -->
-
-    <div id="kongloView" style="display: none;">
+    </section>
       <section class="panels-grid">
         <div class="panel panel-full">
           <div class="panel-header">
@@ -205,8 +233,6 @@
           </div>
         </div>
       </section>
-    </div> <!-- /kongloView -->
-
   </main>
 
   <!-- MODAL for Admin Upload -->

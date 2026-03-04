@@ -109,6 +109,27 @@ const upload = multer({ storage: storage });
 // Create a connection pool
 const pool = mysql.createPool(dbConfig);
 
+// Helper to get latest date
+async function getLatestDate() {
+  const [rows] = await pool.query('SELECT MAX(STR_TO_DATE(date, "%d-%b-%y")) as max_date FROM kepemilikan_saham');
+  if (rows[0].max_date) {
+    // Determine the raw string format or format it back
+    const [rawRows] = await pool.query('SELECT date FROM kepemilikan_saham ORDER BY STR_TO_DATE(date, "%d-%b-%y") DESC LIMIT 1');
+    return rawRows.length ? rawRows[0].date : null;
+  }
+  return null;
+}
+
+// Get all available dates
+app.get('/api/dates', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT DISTINCT date FROM kepemilikan_saham ORDER BY STR_TO_DATE(date, "%d-%b-%y") DESC');
+    res.json(rows.map(r => r.date));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // File upload endpoint
 app.post('/api/upload-pdf', upload.single('pdfFile'), async (req, res) => {
   if (!req.file) {
@@ -194,6 +215,7 @@ app.post('/api/upload-pdf', upload.single('pdfFile'), async (req, res) => {
 
 // Summary statistics
 app.get('/api/stats', async (req, res) => {
+  const date = req.query.date || await getLatestDate();
   try {
     const [[stats]] = await pool.query(`
       SELECT 
@@ -203,7 +225,8 @@ app.get('/api/stats', async (req, res) => {
         ROUND(AVG(percentage), 2) as avg_percentage,
         MAX(percentage) as max_percentage
       FROM kepemilikan_saham
-    `);
+      WHERE date = ? OR ? IS NULL
+    `, [date, date]);
     res.json(stats);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -213,6 +236,7 @@ app.get('/api/stats', async (req, res) => {
 // Top investors by number of companies owned
 app.get('/api/top-investors', async (req, res) => {
   const limit = parseInt(req.query.limit) || 20;
+  const date = req.query.date || await getLatestDate();
   try {
     const [rows] = await pool.query(`
       SELECT 
@@ -223,10 +247,11 @@ app.get('/api/top-investors', async (req, res) => {
         SUM(total_holding_shares) as total_shares,
         ROUND(AVG(percentage), 2) as avg_percentage
       FROM kepemilikan_saham
+      WHERE date = ? OR ? IS NULL
       GROUP BY investor_name
       ORDER BY companies_count DESC, total_shares DESC
       LIMIT ?
-    `, [limit]);
+    `, [date, date, limit]);
     res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -236,6 +261,7 @@ app.get('/api/top-investors', async (req, res) => {
 // Largest individual holdings by percentage
 app.get('/api/top-holdings', async (req, res) => {
   const limit = parseInt(req.query.limit) || 20;
+  const date = req.query.date || await getLatestDate();
   try {
     const [rows] = await pool.query(`
       SELECT 
@@ -247,9 +273,37 @@ app.get('/api/top-holdings', async (req, res) => {
         total_holding_shares,
         percentage
       FROM kepemilikan_saham
+      WHERE (date = ? OR ? IS NULL)
       ORDER BY percentage DESC
       LIMIT ?
-    `, [limit]);
+    `, [date, date, limit]);
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Kepemilikan 1% - 5.99% (Fractional Owners)
+app.get('/api/fractional-owners', async (req, res) => {
+  const limit = parseInt(req.query.limit) || 30;
+  const date = req.query.date || await getLatestDate();
+  try {
+    const [rows] = await pool.query(`
+      SELECT 
+        share_code,
+        issuer_name,
+        investor_name,
+        investor_type,
+        local_foreign,
+        total_holding_shares,
+        percentage
+      FROM kepemilikan_saham
+      WHERE (date = ? OR ? IS NULL)
+        AND percentage >= 1.00 
+        AND percentage < 6.00
+      ORDER BY percentage DESC
+      LIMIT ?
+    `, [date, date, limit]);
     res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -258,6 +312,7 @@ app.get('/api/top-holdings', async (req, res) => {
 
 // All issuers with ownership summary
 app.get('/api/issuers', async (req, res) => {
+  const date = req.query.date || await getLatestDate();
   try {
     const [rows] = await pool.query(`
       SELECT 
@@ -269,9 +324,10 @@ app.get('/api/issuers', async (req, res) => {
         MAX(percentage) as largest_pct,
         GROUP_CONCAT(DISTINCT local_foreign) as ownership_types
       FROM kepemilikan_saham
+      WHERE date = ? OR ? IS NULL
       GROUP BY share_code
       ORDER BY share_code
-    `);
+    `, [date, date]);
     res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -280,13 +336,14 @@ app.get('/api/issuers', async (req, res) => {
 
 // Detail of a specific issuer's shareholders
 app.get('/api/issuer/:code', async (req, res) => {
+  const date = req.query.date || await getLatestDate();
   try {
     const [rows] = await pool.query(`
       SELECT *
       FROM kepemilikan_saham
-      WHERE share_code = ?
+      WHERE share_code = ? AND (date = ? OR ? IS NULL)
       ORDER BY percentage DESC
-    `, [req.params.code.toUpperCase()]);
+    `, [req.params.code.toUpperCase(), date, date]);
     res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -295,6 +352,7 @@ app.get('/api/issuer/:code', async (req, res) => {
 
 // Local vs Foreign ownership aggregation 
 app.get('/api/local-vs-foreign', async (req, res) => {
+  const date = req.query.date || await getLatestDate();
   try {
     const [rows] = await pool.query(`
       SELECT 
@@ -309,9 +367,10 @@ app.get('/api/local-vs-foreign', async (req, res) => {
         SUM(total_holding_shares) as total_shares,
         ROUND(AVG(percentage), 2) as avg_percentage
       FROM kepemilikan_saham
+      WHERE date = ? OR ? IS NULL
       GROUP BY local_foreign
       ORDER BY total_shares DESC
-    `);
+    `, [date, date]);
     res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -320,21 +379,22 @@ app.get('/api/local-vs-foreign', async (req, res) => {
 
 // Investor type breakdown
 app.get('/api/investor-types', async (req, res) => {
+  const date = req.query.date || await getLatestDate();
   try {
     const [rows] = await pool.query(`
       SELECT 
-        CASE investor_type
-          WHEN 'CP' THEN 'Perusahaan (CP)'
-          WHEN 'ID' THEN 'Individu (ID)'
-          WHEN 'IB' THEN 'Bank (IB)'
-          WHEN 'IC' THEN 'Asuransi (IC)'
-          WHEN 'IS' THEN 'Sekuritas (IS)'
-          WHEN 'MF' THEN 'Reksa Dana (MF)'
-          WHEN 'PF' THEN 'Dana Pensiun (PF)'
-          WHEN 'FD' THEN 'Yayasan (FD)'
-          WHEN 'SC' THEN 'Perusahaan Efek (SC)'
-          WHEN 'OT' THEN 'Lainnya (OT)'
-          ELSE investor_type
+        CASE 
+          WHEN investor_type = 'CP' THEN 'Korporat'
+          WHEN investor_type = 'ID' THEN 'Individu'
+          WHEN investor_type = 'IB' THEN 'Inv. Banking'
+          WHEN investor_type = 'IS' THEN 'Asuransi'
+          WHEN investor_type = 'SC' THEN 'Sekuritas'
+          WHEN investor_type = 'FD' THEN 'Yayasan'
+          WHEN investor_type = 'MF' THEN 'Reksadana'
+          WHEN investor_type = 'PF' THEN 'Dapen'
+          WHEN investor_type = 'OT' THEN 'Lainnya'
+          WHEN investor_type IS NULL OR investor_type = '' OR investor_type = '-' THEN 'Lainnya'
+          ELSE 'Lainnya'
         END as type_label,
         investor_type as type_code,
         COUNT(*) as record_count,
@@ -343,9 +403,10 @@ app.get('/api/investor-types', async (req, res) => {
         SUM(total_holding_shares) as total_shares,
         ROUND(AVG(percentage), 2) as avg_percentage
       FROM kepemilikan_saham
+      WHERE date = ? OR ? IS NULL
       GROUP BY investor_type
       ORDER BY record_count DESC
-    `);
+    `, [date, date]);
     res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -355,6 +416,7 @@ app.get('/api/investor-types', async (req, res) => {
 // Search issuers or investors
 app.get('/api/search', async (req, res) => {
   const q = `%${(req.query.q || '').toUpperCase()}%`;
+  const date = req.query.date || await getLatestDate();
   try {
     const [rows] = await pool.query(`
       SELECT DISTINCT
@@ -366,12 +428,13 @@ app.get('/api/search', async (req, res) => {
         total_holding_shares,
         percentage
       FROM kepemilikan_saham
-      WHERE UPPER(share_code) LIKE ? 
+      WHERE (UPPER(share_code) LIKE ? 
          OR UPPER(issuer_name) LIKE ? 
-         OR UPPER(investor_name) LIKE ?
+         OR UPPER(investor_name) LIKE ?)
+         AND (date = ? OR ? IS NULL)
       ORDER BY percentage DESC
       LIMIT 50
-    `, [q, q, q]);
+    `, [q, q, q, date, date]);
     res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -381,6 +444,7 @@ app.get('/api/search', async (req, res) => {
 // Top issuers by number of large shareholders
 app.get('/api/most-distributed', async (req, res) => {
   const limit = parseInt(req.query.limit) || 20;
+  const date = req.query.date || await getLatestDate();
   try {
     const [rows] = await pool.query(`
       SELECT 
@@ -391,10 +455,11 @@ app.get('/api/most-distributed', async (req, res) => {
         MAX(percentage) as largest_holding_pct,
         MIN(percentage) as smallest_holding_pct
       FROM kepemilikan_saham
+      WHERE date = ? OR ? IS NULL
       GROUP BY share_code
       ORDER BY shareholder_count DESC
       LIMIT ?
-    `, [limit]);
+    `, [date, date, limit]);
     res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });

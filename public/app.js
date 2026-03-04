@@ -1,5 +1,6 @@
 // ─────────────────────── HELPERS ───────────────────────
 const API = '';
+let selectedDate = '';
 
 function formatNumber(n) {
   if (n == null) return '—';
@@ -12,14 +13,34 @@ function pctClass(pct) {
   return 'pct-low';
 }
 
+function formatInvestorType(code) {
+  if (!code || code === '-' || code.trim() === '') return 'Lainnya';
+  const map = {
+    'CP': 'Korporat',
+    'ID': 'Individu',
+    'IB': 'Inv. Banking',
+    'IS': 'Asuransi',
+    'SC': 'Sekuritas',
+    'FD': 'Yayasan',
+    'MF': 'Reksadana',
+    'PF': 'Dapen',
+    'OT': 'Lainnya'
+  };
+  return map[code] || 'Lainnya';
+}
+
 function badgeLF(lf) {
   if (lf === 'L') return '<span class="badge badge-local">Lokal</span>';
   if (lf === 'A') return '<span class="badge badge-foreign">Asing</span>';
-  return '<span class="badge badge-type">—</span>';
+  return '<span class="badge badge-type" style="background:var(--bg-panel-light);color:var(--text-muted);border:1px solid rgba(148,163,184,0.2)">Tidak Diketahui</span>';
 }
 
 async function fetchJSON(url) {
-  const res = await fetch(API + url);
+  const urlObj = new URL(url, window.location.origin);
+  if (selectedDate) {
+    urlObj.searchParams.set('date', selectedDate);
+  }
+  const res = await fetch(urlObj.toString());
   return res.json();
 }
 
@@ -201,7 +222,7 @@ async function loadTopInvestors() {
     <tr>
       <td>${i + 1}</td>
       <td class="name-cell" title="${d.investor_name}">${d.investor_name}</td>
-      <td><span class="badge badge-type">${d.investor_type}</span></td>
+      <td><span class="badge badge-type">${formatInvestorType(d.investor_type)}</span></td>
       <td>${badgeLF(d.local_foreign)}</td>
       <td class="number-cell">${d.companies_count}</td>
       <td class="pct-cell ${pctClass(d.avg_percentage)}">${d.avg_percentage}%</td>
@@ -222,6 +243,25 @@ async function loadMostDistributed() {
       <td class="number-cell">${d.shareholder_count}</td>
       <td class="pct-cell ${pctClass(d.total_tracked_pct)}">${d.total_tracked_pct}%</td>
       <td class="pct-cell ${pctClass(d.largest_holding_pct)}">${d.largest_holding_pct}%</td>
+    </tr>
+  `).join('');
+}
+
+// ─────────────────────── FRACTIONAL OWNERS (1-5%) ───────────────────────
+async function loadFractionalOwners() {
+  const data = await fetchJSON('/api/fractional-owners?limit=30');
+  const tbody = document.querySelector('#fractionalOwnersTable tbody');
+
+  tbody.innerHTML = data.map((d, i) => `
+    <tr onclick="showIssuerDetail('${d.share_code}', '${d.issuer_name.replace(/'/g, "\\'")}')">
+      <td>${i + 1}</td>
+      <td class="code-cell">${d.share_code}</td>
+      <td class="name-cell" title="${d.issuer_name}">${d.issuer_name}</td>
+      <td class="name-cell" title="${d.investor_name}">${d.investor_name}</td>
+      <td><span class="badge badge-type">${formatInvestorType(d.investor_type)}</span></td>
+      <td>${badgeLF(d.local_foreign)}</td>
+      <td class="number-cell">${formatNumber(d.total_holding_shares)}</td>
+      <td class="pct-cell pct-low">${d.percentage}%</td>
     </tr>
   `).join('');
 }
@@ -265,27 +305,6 @@ async function loadKonglomerat() {
   `}).join('');
 }
 
-// View Toggling
-const dashView = document.getElementById('dashboardView');
-const kongloView = document.getElementById('kongloView');
-const btnDash = document.getElementById('viewDashboardBtn');
-const btnKonglo = document.getElementById('viewKongloBtn');
-
-btnKonglo.addEventListener('click', () => {
-  dashView.style.display = 'none';
-  kongloView.style.display = 'block';
-  btnKonglo.style.display = 'none';
-  btnDash.style.display = 'inline-block';
-  loadKonglomerat(); // load on demand or refresh
-});
-
-btnDash.addEventListener('click', () => {
-  kongloView.style.display = 'none';
-  dashView.style.display = 'block';
-  btnDash.style.display = 'none';
-  btnKonglo.style.display = 'inline-block';
-});
-
 // ─────────────────────── ISSUER DETAIL MODAL ───────────────────────
 async function showIssuerDetail(code, name) {
   const overlay = document.getElementById('modalOverlay');
@@ -302,7 +321,7 @@ async function showIssuerDetail(code, name) {
     <tr>
       <td>${i + 1}</td>
       <td class="name-cell" title="${d.investor_name}">${d.investor_name}</td>
-      <td><span class="badge badge-type">${d.investor_type}</span></td>
+      <td><span class="badge badge-type">${formatInvestorType(d.investor_type)}</span></td>
       <td>${badgeLF(d.local_foreign)}</td>
       <td>${d.nationality || '—'}</td>
       <td>${d.domicile || '—'}</td>
@@ -438,16 +457,16 @@ uploadForm.addEventListener('submit', async (e) => {
     
     uploadStatus.innerHTML = `<span style="color:var(--accent-emerald)">${result.message}</span>`;
     
-    // Reload dashboard data
-    setTimeout(() => {
-      adminModalOverlay.classList.remove('active');
-      uploadBtn.disabled = false;
-      uploadBtn.innerText = 'Upload & Ekstrak Data';
-      pdfFileInput.value = '';
-      selectedFileName.textContent = '';
-      uploadStatus.innerHTML = '';
-      init(); // refresh dashboard
-    }, 2000);
+      // Reload dashboard data
+      setTimeout(() => {
+        adminModalOverlay.classList.remove('active');
+        uploadBtn.disabled = false;
+        uploadBtn.innerText = 'Upload & Ekstrak Data';
+        pdfFileInput.value = '';
+        selectedFileName.textContent = '';
+        uploadStatus.innerHTML = '';
+        loadDates().then(init); // refresh dates then dashboard
+      }, 2000);
     
   } catch (error) {
     console.error('Upload error:', error);
@@ -456,6 +475,28 @@ uploadForm.addEventListener('submit', async (e) => {
     uploadBtn.innerText = 'Upload & Ekstrak Data';
   }
 });
+
+// ─────────────────────── DATES FILTER ───────────────────────
+async function loadDates() {
+  try {
+    const dates = await fetchJSON('/api/dates');
+    const dateFilter = document.getElementById('dateFilter');
+    dateFilter.innerHTML = '<option value="">Terbaru</option>' + 
+      dates.map(d => `<option value="${d}">${d}</option>`).join('');
+    
+    // Set to latest active filter if exists
+    if (selectedDate && dates.includes(selectedDate)) {
+      dateFilter.value = selectedDate;
+    }
+
+    dateFilter.addEventListener('change', (e) => {
+      selectedDate = e.target.value;
+      init(); // Reload all components
+    });
+  } catch(e) {
+    console.error('Failed to load dates', e);
+  }
+}
 
 // ─────────────────────── INIT ───────────────────────
 async function init() {
@@ -468,11 +509,15 @@ async function init() {
       loadTopInvestors(),
       loadMostDistributed(),
       loadIssuers(),
-      loadKonglomerat()
+      loadFractionalOwners()
+      // konglomerat doesn't need date reloading as it's static
     ]);
   } catch (err) {
     console.error('Error loading dashboard:', err);
   }
 }
 
-init();
+loadDates().then(() => {
+  loadKonglomerat();
+  init();
+});
