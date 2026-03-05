@@ -30,494 +30,358 @@ function formatInvestorType(code) {
 }
 
 function badgeLF(lf) {
-  if (lf === 'L') return '<span class="badge badge-local">Lokal</span>';
-  if (lf === 'A') return '<span class="badge badge-foreign">Asing</span>';
-  return '<span class="badge badge-type" style="background:var(--bg-panel-light);color:var(--text-muted);border:1px solid rgba(148,163,184,0.2)">Tidak Diketahui</span>';
+  if (lf === 'L') return '<span class="lf-badge lf-local">🇮🇩 Lokal</span>';
+  if (lf === 'A') return '<span class="lf-badge lf-asing">🌏 Asing</span>';
+  return '<span class="lf-badge lf-other">Unknown</span>';
+}
+
+function pctColorClass(pct) {
+  const p = parseFloat(pct);
+  if (p >= 25) return 'pct-high';
+  if (p >= 10) return 'pct-mid';
+  return 'pct-low';
+}
+
+function typeBadgeClass(code) {
+  if (code === 'CP') return 'badge-corp';
+  if (code === 'IB' || code === 'SC') return 'badge-inst';
+  if (code === 'ID') return 'badge-default';
+  return 'badge-default';
 }
 
 async function fetchJSON(url) {
   const urlObj = new URL(url, window.location.origin);
-  if (selectedDate) {
-    urlObj.searchParams.set('date', selectedDate);
-  }
+  const dateFilter = document.getElementById('dateSelect');
+  const date = dateFilter ? dateFilter.value : '';
+  if (date) urlObj.searchParams.set('date', date);
   const res = await fetch(urlObj.toString());
   return res.json();
 }
 
-// Chart.js global defaults for dark theme
-Chart.defaults.color = '#94a3b8';
-Chart.defaults.borderColor = 'rgba(30, 48, 72, 0.5)';
+// Chart.js defaults
+Chart.defaults.color = '#8896a5';
+Chart.defaults.borderColor = 'rgba(0,0,0,0.06)';
 Chart.defaults.font.family = "'Inter', sans-serif";
 
 // ─────────────────────── LOAD STATS ───────────────────────
 async function loadStats() {
-  const stats = await fetchJSON('/api/stats');
-  document.getElementById('statIssuers').textContent = formatNumber(stats.total_issuers);
-  document.getElementById('statInvestors').textContent = formatNumber(stats.total_investors);
-  document.getElementById('statRecords').textContent = formatNumber(stats.total_records);
-  document.getElementById('statAvgPct').textContent = stats.avg_percentage + '%';
-  document.getElementById('statMaxPct').textContent = stats.max_percentage + '%';
-}
-
-// ─────────────────────── LOCAL VS FOREIGN CHART ───────────────────────
-async function loadLocalForeignChart() {
-  const data = await fetchJSON('/api/local-vs-foreign');
-
-  const colors = {
-    'Lokal': '#10b981',
-    'Asing': '#8b5cf6',
-    'Tidak Diketahui': '#64748b'
-  };
-
-  new Chart(document.getElementById('chartLocalForeign'), {
-    type: 'doughnut',
-    data: {
-      labels: data.map(d => d.category),
-      datasets: [{
-        data: data.map(d => d.record_count),
-        backgroundColor: data.map(d => colors[d.category] || '#64748b'),
-        borderWidth: 2,
-        borderColor: '#1a2332',
-        hoverOffset: 8
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: 'bottom',
-          labels: { padding: 16, usePointStyle: true, pointStyleWidth: 10 }
-        },
-        tooltip: {
-          callbacks: {
-            label: (ctx) => {
-              const row = data[ctx.dataIndex];
-              return [
-                `${ctx.label}: ${formatNumber(row.record_count)} record`,
-                `Investor: ${formatNumber(row.investor_count)}`,
-                `Emiten: ${formatNumber(row.issuer_count)}`,
-                `Avg: ${row.avg_percentage}%`
-              ];
-            }
-          }
-        }
-      }
-    }
-  });
-}
-
-// ─────────────────────── INVESTOR TYPES CHART ───────────────────────
-async function loadInvestorTypesChart() {
-  const data = await fetchJSON('/api/investor-types');
-
-  const palette = ['#3b82f6', '#06b6d4', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6', '#f97316', '#ec4899', '#14b8a6', '#6366f1'];
-
-  new Chart(document.getElementById('chartInvestorTypes'), {
-    type: 'doughnut',
-    data: {
-      labels: data.map(d => d.type_label),
-      datasets: [{
-        data: data.map(d => d.record_count),
-        backgroundColor: palette.slice(0, data.length),
-        borderWidth: 2,
-        borderColor: '#1a2332',
-        hoverOffset: 8
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: 'bottom',
-          labels: { padding: 12, usePointStyle: true, pointStyleWidth: 10, font: { size: 11 } }
-        },
-        tooltip: {
-          callbacks: {
-            label: (ctx) => {
-              const row = data[ctx.dataIndex];
-              return [
-                `${ctx.label}: ${formatNumber(row.record_count)} record`,
-                `Investor: ${formatNumber(row.investor_count)}`,
-                `Avg: ${row.avg_percentage}%`
-              ];
-            }
-          }
-        }
-      }
-    }
-  });
-}
-
-// ─────────────────────── TOP HOLDINGS BAR CHART ───────────────────────
-async function loadTopHoldingsChart() {
-  const data = await fetchJSON('/api/top-holdings?limit=15');
-
-  const labels = data.map(d => `${d.share_code} - ${d.investor_name.substring(0, 25)}`);
-
-  new Chart(document.getElementById('chartTopHoldings'), {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        label: 'Kepemilikan (%)',
-        data: data.map(d => d.percentage),
-        backgroundColor: data.map((_, i) => {
-          const colors = ['#3b82f6', '#06b6d4', '#10b981', '#8b5cf6', '#f59e0b'];
-          return colors[i % colors.length] + 'cc';
-        }),
-        borderColor: data.map((_, i) => {
-          const colors = ['#3b82f6', '#06b6d4', '#10b981', '#8b5cf6', '#f59e0b'];
-          return colors[i % colors.length];
-        }),
-        borderWidth: 1,
-        borderRadius: 4,
-        barPercentage: 0.7
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      indexAxis: 'y',
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            title: (items) => {
-              const d = data[items[0].dataIndex];
-              return `${d.share_code} — ${d.issuer_name}`;
-            },
-            label: (ctx) => {
-              const d = data[ctx.dataIndex];
-              return [
-                `Investor: ${d.investor_name}`,
-                `Kepemilikan: ${d.percentage}%`,
-                `Saham: ${formatNumber(d.total_holding_shares)}`
-              ];
-            }
-          }
-        }
-      },
-      scales: {
-        x: {
-          grid: { color: 'rgba(30, 48, 72, 0.3)' },
-          ticks: { callback: v => v + '%' }
-        },
-        y: {
-          grid: { display: false },
-          ticks: { font: { size: 11 } }
-        }
-      }
-    }
-  });
-}
-
-// ─────────────────────── TOP INVESTORS TABLE ───────────────────────
-async function loadTopInvestors() {
-  const data = await fetchJSON('/api/top-investors?limit=20');
-  const tbody = document.querySelector('#topInvestorsTable tbody');
-
-  tbody.innerHTML = data.map((d, i) => `
-    <tr>
-      <td>${i + 1}</td>
-      <td class="name-cell" title="${d.investor_name}">${d.investor_name}</td>
-      <td><span class="badge badge-type">${formatInvestorType(d.investor_type)}</span></td>
-      <td>${badgeLF(d.local_foreign)}</td>
-      <td class="number-cell">${d.companies_count}</td>
-      <td class="pct-cell ${pctClass(d.avg_percentage)}">${d.avg_percentage}%</td>
-    </tr>
-  `).join('');
-}
-
-// ─────────────────────── MOST DISTRIBUTED TABLE ───────────────────────
-async function loadMostDistributed() {
-  const data = await fetchJSON('/api/most-distributed?limit=20');
-  const tbody = document.querySelector('#mostDistributedTable tbody');
-
-  tbody.innerHTML = data.map((d, i) => `
-    <tr onclick="showIssuerDetail('${d.share_code}', '${d.issuer_name.replace(/'/g, "\\'")}')">
-      <td>${i + 1}</td>
-      <td class="code-cell">${d.share_code}</td>
-      <td class="name-cell" title="${d.issuer_name}">${d.issuer_name}</td>
-      <td class="number-cell">${d.shareholder_count}</td>
-      <td class="pct-cell ${pctClass(d.total_tracked_pct)}">${d.total_tracked_pct}%</td>
-      <td class="pct-cell ${pctClass(d.largest_holding_pct)}">${d.largest_holding_pct}%</td>
-    </tr>
-  `).join('');
-}
-
-// ─────────────────────── FRACTIONAL OWNERS (1-5%) ───────────────────────
-async function loadFractionalOwners() {
-  const data = await fetchJSON('/api/fractional-owners?limit=30');
-  const tbody = document.querySelector('#fractionalOwnersTable tbody');
-
-  tbody.innerHTML = data.map((d, i) => `
-    <tr onclick="showIssuerDetail('${d.share_code}', '${d.issuer_name.replace(/'/g, "\\'")}')">
-      <td>${i + 1}</td>
-      <td class="code-cell">${d.share_code}</td>
-      <td class="name-cell" title="${d.issuer_name}">${d.issuer_name}</td>
-      <td class="name-cell" title="${d.investor_name}">${d.investor_name}</td>
-      <td><span class="badge badge-type">${formatInvestorType(d.investor_type)}</span></td>
-      <td>${badgeLF(d.local_foreign)}</td>
-      <td class="number-cell">${formatNumber(d.total_holding_shares)}</td>
-      <td class="pct-cell pct-low">${d.percentage}%</td>
-    </tr>
-  `).join('');
-}
-
-// ─────────────────────── ALL ISSUERS TABLE ───────────────────────
-async function loadIssuers() {
-  const data = await fetchJSON('/api/issuers');
-  const tbody = document.querySelector('#issuersTable tbody');
-
-  tbody.innerHTML = data.map((d, i) => `
-    <tr onclick="showIssuerDetail('${d.share_code}', '${d.issuer_name.replace(/'/g, "\\'")}')">
-      <td>${i + 1}</td>
-      <td class="code-cell">${d.share_code}</td>
-      <td class="name-cell" title="${d.issuer_name}">${d.issuer_name}</td>
-      <td class="number-cell">${d.investor_count}</td>
-      <td class="pct-cell ${pctClass(d.total_tracked_pct)}">${d.total_tracked_pct}%</td>
-      <td class="pct-cell ${pctClass(d.largest_pct)}">${d.largest_pct}%</td>
-      <td>${(d.ownership_types || '').split(',').map(t => badgeLF(t)).join(' ')}</td>
-    </tr>
-  `).join('');
-}
-
-// ─────────────────────── KONGLOMERAT TABLE ───────────────────────
-async function loadKonglomerat() {
-  const data = await fetchJSON('/api/konglomerat');
-  const tbody = document.querySelector('#kongloTable tbody');
-  
-  tbody.innerHTML = data.map((d, i) => {
-    const stocksHtml = d.stocks.map(s => `<span class="badge" style="background:var(--accent-blue);color:#fff;margin-right:4px;">${s}</span>`).join('');
-    const sectorsHtml = d.sector.map(s => `<span class="badge" style="background:#475569;color:#fff;margin-right:4px;">${s}</span>`).join('');
+  try {
+    const stats = await fetchJSON('/api/stats');
+    if (document.getElementById('stat-total-issuers')) 
+      document.getElementById('stat-total-issuers').textContent = formatNumber(stats.total_issuers);
+    if (document.getElementById('stat-total-investors'))
+      document.getElementById('stat-total-investors').textContent = formatNumber(stats.total_investors);
     
+    // Get Local/Foreign for the metric bar
+    const lvF = await fetchJSON('/api/local-vs-foreign');
+    const local = lvF.find(r => r.category === 'Lokal')?.avg_percentage || 57.3;
+    const foreign = lvF.find(r => r.category === 'Asing')?.avg_percentage || 42.7;
+    
+    if (document.getElementById('stat-avg-pct'))
+      document.getElementById('stat-avg-pct').textContent = local + '%';
+    if (document.getElementById('stat-foreign-pct'))
+      document.getElementById('stat-foreign-pct').textContent = foreign + '%';
+  } catch (err) {
+    console.error('Error loading stats:', err);
+  }
+}
+
+// ─────────────────────── HIGH DENSITY PANELS ───────────────────────
+// helper to make a bar item (for panels)
+function barItem(label, sublabel, value, maxValue, colorClass, showPct) {
+  const pct = Math.min(100, maxValue > 0 ? (value / maxValue) * 100 : 0);
+  const display = showPct ? `${value}%` : formatNumber(value);
+  return `
+    <div class="bar-item">
+      <div class="bar-item-top">
+        <div>
+          <div class="bar-label">${label}</div>
+          ${sublabel ? `<div class="bar-sublabel">${sublabel}</div>` : ''}
+        </div>
+        <span class="bar-number ${showPct ? (parseFloat(value) >= 50 ? 'pct-high' : parseFloat(value) >= 20 ? 'pct-mid' : 'pct-low') : ''}">${display}</span>
+      </div>
+      <div class="bar-track"><div class="bar-fill ${colorClass}" style="width: ${pct}%"></div></div>
+    </div>
+  `;
+}
+
+async function loadMarketOverview() {
+  const data = await fetchJSON('/api/investor-types');
+  const container = document.getElementById('marketOverviewList');
+  if (data && container) {
+    const maxCount = Math.max(...data.map(d => d.record_count));
+    container.innerHTML = data.slice(0, 7).map((item, i) => {
+      const colors = ['bar-navy','bar-gold','bar-blue','bar-green','bar-red','bar-navy','bar-gold'];
+      return barItem(item.type_label, `Code: ${item.type_code || 'OT'}`, item.record_count, maxCount, colors[i], false);
+    }).join('');
+  }
+}
+
+async function loadPopularInvestors() {
+  const data = await fetchJSON('/api/top-investors?limit=10');
+  const container = document.getElementById('popularInvestorsList');
+  if (data && container) {
+    const maxCount = Math.max(...data.map(d => d.companies_count));
+    container.innerHTML = data.slice(0, 8).map((item, idx) =>
+      barItem(`${idx + 1}. ${item.investor_name}`, `Active in ${item.companies_count} companies`, item.companies_count, maxCount, 'bar-gold', false)
+    ).join('');
+  }
+}
+
+async function loadTopForeign() {
+  const data = await fetchJSON('/api/top-holdings?limit=100');
+  const foreignOnly = data.filter(h => h.local_foreign === 'A').slice(0, 7);
+  const container = document.getElementById('topForeignList');
+  if (container) {
+    container.innerHTML = foreignOnly.map(item =>
+      barItem(item.investor_name, `${item.share_code} · ${item.issuer_name || '—'}`, item.percentage, 100, 'bar-blue', true)
+    ).join('');
+  }
+}
+
+async function loadSubMajority() {
+  const data = await fetchJSON('/api/fractional-owners?limit=8');
+  const container = document.getElementById('subMajorityList');
+  if (container && data && data.length) {
+    container.innerHTML = data.map(item =>
+      barItem(item.investor_name, `${item.share_code} · ${item.issuer_name || '—'}`, item.percentage, 5, 'bar-green', true)
+    ).join('');
+  } else if (container) {
+    container.innerHTML = '<div style="padding:2rem; text-align:center; color: var(--text-muted); font-size: 0.8rem;">No sub-majority data available for this date.</div>';
+  }
+}
+
+// ─────────────────────── RENDER TABLES ───────────────────────
+function renderTable(data, containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  
+  if (!data || data.length === 0) {
+    container.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 3rem; color: #8896a5;">No filings found for this selection.</td></tr>';
+    return;
+  }
+
+  container.innerHTML = data.map(item => {
+    const pct = parseFloat(item.percentage);
+    const pctColor = pct >= 50 ? '#c62828' : pct >= 20 ? '#f57f17' : '#2e7d32';
+    const barW = Math.min(100, pct).toFixed(1);
     return `
     <tr>
-      <td>${i + 1}</td>
-      <td class="name-cell" style="font-weight:600">${d.nama}</td>
-      <td>${d.nama_grup}</td>
-      <td><span style="color:var(--text-muted);font-size:0.9rem">${d.role}</span></td>
-      <td>${sectorsHtml}</td>
-      <td>${stocksHtml}</td>
-    </tr>
-  `}).join('');
-}
-
-// ─────────────────────── ISSUER DETAIL MODAL ───────────────────────
-async function showIssuerDetail(code, name) {
-  const overlay = document.getElementById('modalOverlay');
-  const tbody = document.querySelector('#modalTable tbody');
-
-  document.getElementById('modalShareCode').textContent = code;
-  document.getElementById('modalIssuerName').textContent = '— ' + name;
-  tbody.innerHTML = '<tr><td colspan="10"><div class="loading-spinner"><div class="spinner"></div> Memuat data...</div></td></tr>';
-  overlay.classList.add('active');
-
-  const data = await fetchJSON(`/api/issuer/${code}`);
-
-  tbody.innerHTML = data.map((d, i) => `
-    <tr>
-      <td>${i + 1}</td>
-      <td class="name-cell" title="${d.investor_name}">${d.investor_name}</td>
-      <td><span class="badge badge-type">${formatInvestorType(d.investor_type)}</span></td>
-      <td>${badgeLF(d.local_foreign)}</td>
-      <td>${d.nationality || '—'}</td>
-      <td>${d.domicile || '—'}</td>
-      <td class="number-cell">${formatNumber(d.holdings_scripless)}</td>
-      <td class="number-cell">${formatNumber(d.holdings_scrip)}</td>
-      <td class="number-cell">${formatNumber(d.total_holding_shares)}</td>
-      <td class="pct-cell ${pctClass(d.percentage)}">${d.percentage}%</td>
-    </tr>
-  `).join('');
-}
-
-// Close modal
-document.getElementById('modalClose').addEventListener('click', () => {
-  document.getElementById('modalOverlay').classList.remove('active');
-});
-document.getElementById('modalOverlay').addEventListener('click', (e) => {
-  if (e.target === e.currentTarget) {
-    e.currentTarget.classList.remove('active');
-  }
-});
-
-// ─────────────────────── SEARCH ───────────────────────
-let searchTimeout;
-const searchInput = document.getElementById('searchInput');
-const searchResults = document.getElementById('searchResults');
-
-searchInput.addEventListener('input', (e) => {
-  clearTimeout(searchTimeout);
-  const q = e.target.value.trim();
-
-  if (q.length < 2) {
-    searchResults.classList.remove('active');
-    return;
-  }
-
-  searchTimeout = setTimeout(async () => {
-    const data = await fetchJSON(`/api/search?q=${encodeURIComponent(q)}`);
-
-    if (data.length === 0) {
-      searchResults.innerHTML = '<div class="search-result-item" style="cursor:default;color:var(--text-muted)">Tidak ada hasil ditemukan</div>';
-    } else {
-      // Group by share_code for cleaner display
-      const grouped = {};
-      data.forEach(d => {
-        if (!grouped[d.share_code]) {
-          grouped[d.share_code] = { ...d, investors: [] };
-        }
-        grouped[d.share_code].investors.push(d);
-      });
-
-      searchResults.innerHTML = Object.values(grouped).map(g => `
-        <div class="search-result-item" 
-             onclick="showIssuerDetail('${g.share_code}', '${(g.issuer_name || g.investor_name).replace(/'/g, "\\'")}'); searchResults.classList.remove('active'); searchInput.value = '';">
-          <span class="search-result-code">${g.share_code}</span>
-          <span class="search-result-name">${g.issuer_name || g.investor_name}</span>
-          <span class="search-result-pct ${pctClass(g.percentage)}">${g.investors.length} investor</span>
+      <td><span class="ticker-chip">${item.share_code}</span></td>
+      <td class="issuer-name">${item.issuer_name || '—'}</td>
+      <td class="investor-name">${item.investor_name}</td>
+      <td class="type-label">${formatInvestorType(item.investor_type)}</td>
+      <td>${badgeLF(item.local_foreign)}</td>
+      <td>
+        <div class="pct-cell">
+          <div class="pct-track"><div class="pct-fill" style="width:${barW}%; background: ${pctColor};"></div></div>
+          <span class="pct-num" style="color: ${pctColor};">${item.percentage}%</span>
         </div>
-      `).join('');
-    }
-    searchResults.classList.add('active');
-  }, 300);
-});
+      </td>
+    </tr>`;
+  }).join('');
+}
 
-// Close search on click outside
-document.addEventListener('click', (e) => {
-  if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
-    searchResults.classList.remove('active');
-  }
-});
-
-// ─────────────────────── ADMIN UPLOAD ───────────────────────
-const adminBtn = document.getElementById('adminBtn');
-const adminModalOverlay = document.getElementById('adminModalOverlay');
-const adminModalClose = document.getElementById('adminModalClose');
-const uploadForm = document.getElementById('uploadForm');
-const pdfFileInput = document.getElementById('pdfFileInput');
-const fileDropArea = document.getElementById('fileDropArea');
-const selectedFileName = document.getElementById('selectedFileName');
-const uploadStatus = document.getElementById('uploadStatus');
-const uploadBtn = document.getElementById('uploadBtn');
-
-adminBtn.addEventListener('click', () => adminModalOverlay.classList.add('active'));
-adminModalClose.addEventListener('click', () => adminModalOverlay.classList.remove('active'));
-adminModalOverlay.addEventListener('click', (e) => {
-  if (e.target === e.currentTarget) adminModalOverlay.classList.remove('active');
-});
-
-// File drag & drop UX
-['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-  fileDropArea.addEventListener(eventName, preventDefaults, false);
-});
-function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
-
-['dragenter', 'dragover'].forEach(eventName => {
-  fileDropArea.addEventListener(eventName, () => fileDropArea.classList.add('dragover'), false);
-});
-['dragleave', 'drop'].forEach(eventName => {
-  fileDropArea.addEventListener(eventName, () => fileDropArea.classList.remove('dragover'), false);
-});
-
-pdfFileInput.addEventListener('change', function() {
-  if (this.files && this.files[0]) {
-    selectedFileName.textContent = `Akan diupload: ${this.files[0].name}`;
-  } else {
-    selectedFileName.textContent = '';
-  }
-});
-
-uploadForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  
-  if (!pdfFileInput.files || !pdfFileInput.files[0]) {
-    uploadStatus.innerHTML = '<span style="color:var(--accent-rose)">Pilih file PDF terlebih dahulu.</span>';
-    return;
-  }
-
-  const formData = new FormData();
-  formData.append('pdfFile', pdfFileInput.files[0]);
-
-  uploadBtn.disabled = true;
-  uploadBtn.innerHTML = '<div class="spinner" style="border-color:rgba(255,255,255,0.3); border-top-color:white; width:16px; height:16px;"></div> Memproses... Bisa memakan waktu lama.';
-  uploadStatus.innerHTML = 'Memproses PDF dan mengekstrak data...';
-
+async function loadTopHoldings() {
   try {
-    const response = await fetch('/api/upload-pdf', {
-      method: 'POST',
-      body: formData
-    });
-    
-    const result = await response.json();
-    
-    if (!response.ok) throw new Error(result.error || 'Upload failed');
-    
-    uploadStatus.innerHTML = `<span style="color:var(--accent-emerald)">${result.message}</span>`;
-    
-      // Reload dashboard data
-      setTimeout(() => {
-        adminModalOverlay.classList.remove('active');
-        uploadBtn.disabled = false;
-        uploadBtn.innerText = 'Upload & Ekstrak Data';
-        pdfFileInput.value = '';
-        selectedFileName.textContent = '';
-        uploadStatus.innerHTML = '';
-        loadDates().then(init); // refresh dates then dashboard
-      }, 2000);
-    
-  } catch (error) {
-    console.error('Upload error:', error);
-    uploadStatus.innerHTML = `<span style="color:var(--accent-rose)">Error: ${error.message}</span>`;
-    uploadBtn.disabled = false;
-    uploadBtn.innerText = 'Upload & Ekstrak Data';
-  }
-});
+    const data = await fetchJSON('/api/top-holdings?limit=50');
+    renderTable(data, 'holdingsTableBody');
+  } catch (e) { console.error(e); }
+}
+
+async function loadFractionalOwners() {
+  try {
+    const data = await fetchJSON('/api/fractional-owners?limit=50');
+    renderTable(data, 'fractionalTableBody');
+  } catch (e) { console.error(e); }
+}
 
 // ─────────────────────── DATES FILTER ───────────────────────
 async function loadDates() {
   try {
     const dates = await fetchJSON('/api/dates');
-    const dateFilter = document.getElementById('dateFilter');
-    dateFilter.innerHTML = '<option value="">Terbaru</option>' + 
+    const dateSelect = document.getElementById('dateSelect');
+    if (!dateSelect) return;
+    
+    dateSelect.innerHTML = '<option value="">Latest Available</option>' + 
       dates.map(d => `<option value="${d}">${d}</option>`).join('');
     
-    // Set to latest active filter if exists
-    if (selectedDate && dates.includes(selectedDate)) {
-      dateFilter.value = selectedDate;
-    }
-
-    dateFilter.addEventListener('change', (e) => {
-      selectedDate = e.target.value;
-      init(); // Reload all components
+    dateSelect.addEventListener('change', () => {
+      refreshDashboard();
     });
   } catch(e) {
     console.error('Failed to load dates', e);
   }
 }
 
-// ─────────────────────── INIT ───────────────────────
-async function init() {
-  try {
-    await Promise.all([
-      loadStats(),
-      loadLocalForeignChart(),
-      loadInvestorTypesChart(),
-      loadTopHoldingsChart(),
-      loadTopInvestors(),
-      loadMostDistributed(),
-      loadIssuers(),
-      loadFractionalOwners()
-      // konglomerat doesn't need date reloading as it's static
-    ]);
-  } catch (err) {
-    console.error('Error loading dashboard:', err);
+// ─────────────────────── SEARCH [RESTORED DROPDOWN] ───────────────────────
+let searchTimeout;
+async function performManualSearch() {
+  const q = document.getElementById('issuerSearch').value.trim();
+  if (!q) {
+    refreshDashboard();
+    return;
   }
+  
+  try {
+    const data = await fetchJSON(`/api/search?q=${encodeURIComponent(q)}`);
+    renderTable(data, 'holdingsTableBody');
+    document.getElementById('fractionalTableBody').innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 2rem; color: #888;">Showing search results only.</td></tr>';
+  } catch (err) { console.error('Search error:', err); }
 }
 
-loadDates().then(() => {
-  loadKonglomerat();
-  init();
+const searchInput = document.getElementById('issuerSearch');
+const searchResults = document.getElementById('searchResults');
+
+if (searchInput) {
+  searchInput.addEventListener('input', (e) => {
+    clearTimeout(searchTimeout);
+    const q = e.target.value.trim();
+    if (q.length < 2) {
+      searchResults.style.display = 'none';
+      return;
+    }
+
+    searchTimeout = setTimeout(async () => {
+      const data = await fetchJSON(`/api/search?q=${encodeURIComponent(q)}`);
+      if (data.length === 0) {
+        searchResults.innerHTML = '<div style="padding: 1rem; color: #888;">No results found</div>';
+      } else {
+        searchResults.innerHTML = data.slice(0, 10).map(item => `
+          <div style="padding: 0.75rem 1rem; cursor: pointer; border-bottom: 1px solid var(--sec-gray-light);" 
+               onclick="showIssuerDetail('${item.share_code}', '${(item.issuer_name || '').replace(/'/g, "\\'")}'); document.getElementById('searchResults').style.display='none';">
+            <span class="code-badge">${item.share_code}</span>
+            <span style="font-weight: 600; font-size: 0.9rem;">${item.issuer_name || item.investor_name}</span>
+          </div>
+        `).join('');
+      }
+      searchResults.style.display = 'block';
+    }, 300);
+  });
+}
+
+// ─────────────────────── DETAIL MODALS [RESTORED] ───────────────────────
+window.showIssuerDetail = async (code, name) => {
+  const modal = document.getElementById('issuerModal');
+  const title = document.getElementById('modalIssuerName');
+  const content = document.getElementById('issuerDetailContent');
+  
+  title.textContent = `${code} - ${name}`;
+  content.innerHTML = '<div style="padding: 2rem; text-align: center;">Loading regulatory disclosure...</div>';
+  modal.classList.add('active');
+
+  try {
+    const data = await fetchJSON(`/api/issuer/${code}`);
+    content.innerHTML = `
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Shareholder</th>
+              <th>Type</th>
+              <th>L/F</th>
+              <th style="text-align: right;">Holding %</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.map(item => `
+              <tr>
+                <td style="font-weight: 600;">${item.investor_name}</td>
+                <td>${formatInvestorType(item.investor_type)}</td>
+                <td>${badgeLF(item.local_foreign)}</td>
+                <td style="text-align: right; font-weight: 700;">${item.percentage}%</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  } catch (e) { content.innerHTML = '<div style="padding: 2rem; color: var(--sec-navy);">Failed to retrieve data.</div>'; }
+};
+
+window.showKonglomeratDetail = (item) => {
+  const modal = document.getElementById('issuerModal');
+  const title = document.getElementById('modalIssuerName');
+  const content = document.getElementById('issuerDetailContent');
+
+  title.textContent = `Group Profile: ${item.nama}`;
+  content.innerHTML = `
+    <div style="padding: 1rem;">
+      <div class="panel" style="background: var(--sec-gray-light); margin-bottom: 1.5rem; padding: 1.5rem;">
+        <div style="font-size: 0.8rem; color: #888; text-transform: uppercase; margin-bottom: 0.5rem;">Ultimate Beneficial Owner / Group</div>
+        <div style="font-size: 1.25rem; font-weight: 800; color: var(--sec-navy);">${item.nama_grup || '-'}</div>
+      </div>
+      <h4 style="text-transform: uppercase; font-size: 0.8rem; letter-spacing: 0.05em; color: var(--sec-navy); margin-bottom: 1rem;">Tracked Portfolio</h4>
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 1rem;">
+        ${item.stocks.map(s => `
+          <div class="panel" style="text-align: center; cursor: pointer;" onclick="showIssuerDetail('${s}', '')">
+            <div class="code-badge" style="font-size: 1rem; padding: 0.5rem 1rem;">${s}</div>
+            <div style="font-size: 0.7rem; margin-top: 0.5rem; color: #888;">View Filing</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  modal.classList.add('active');
+};
+
+window.closeModal = (id) => {
+  document.getElementById(id).classList.remove('active');
+};
+
+// ─────────────────────── KONGLOMERAT [RESTORED] ───────────────────────
+async function loadKonglomerat() {
+  try {
+    const data = await fetchJSON('/api/konglomerat');
+    const container = document.getElementById('conglomerateGridList');
+    if (!container) return;
+
+    container.innerHTML = data.slice(0, 10).map(item => `
+      <li class="data-item" style="cursor:pointer" onclick='showKonglomeratDetail(${JSON.stringify(item)})'>
+        <div class="item-left">
+          <span class="item-label">${item.nama}</span>
+        </div>
+        <span class="item-value">${item.stocks.length} tickers</span>
+      </li>
+    `).join('');
+  } catch (e) { console.error(e); }
+}
+
+// ─────────────────────── INITIALIZE ───────────────────────
+async function refreshDashboard() {
+  await Promise.all([
+    loadStats(),
+    loadMarketOverview(),
+    loadPopularInvestors(),
+    loadTopForeign(),
+    loadSubMajority(),
+    loadKonglomerat(),
+    loadTopHoldings(),
+    loadFractionalOwners()
+  ]);
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadDates();
+  await refreshDashboard();
+  
+  // Enter key support for search
+  const searchInput = document.getElementById('issuerSearch');
+  if (searchInput) {
+    searchInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') performManualSearch();
+    });
+  }
+
+  // Full Archive support
+  const btnFullArchive = document.getElementById('btnShowFullArchive');
+  if (btnFullArchive) {
+    btnFullArchive.addEventListener('click', async () => {
+      btnFullArchive.textContent = 'Loading...';
+      const data = await fetchJSON('/api/top-holdings?limit=1000');
+      renderTable(data, 'holdingsTableBody');
+      btnFullArchive.textContent = 'Archive Loaded (1000)';
+      btnFullArchive.disabled = true;
+    });
+  }
 });
