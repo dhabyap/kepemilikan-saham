@@ -1,5 +1,3 @@
-const API = window.CONFIG ? window.CONFIG.API_BASE : '/api';
-
 document.addEventListener('DOMContentLoaded', async () => {
   const token = localStorage.getItem('adminToken');
   if (!token) {
@@ -9,7 +7,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // --- Auth Verification ---
   try {
-    const res = await fetch(`${API}/verify`, {
+    const res = await fetch('/api/verify', {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (!res.ok) throw new Error('Token invalid');
@@ -110,7 +108,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     uploadStatus.innerHTML = '<span style="color:var(--text-muted)">Sedang mengekstrak data JSON menggunakan AI. Proses ini bisa memakan waktu hingga beberapa menit. Tolong jangan tutup halaman ini.</span>';
 
     try {
-      const response = await fetch(`${API}/upload-pdf`, {
+      const response = await fetch('/api/upload-pdf', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}` 
@@ -146,7 +144,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     sahamTableBody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading data...</td></tr>';
     try {
       // Fetch latest top 100 for admin view 
-      const res = await fetch(`${API}/search?q=`, { headers });
+      const res = await fetch('/api/search?q=', { headers });
       const data = await res.json();
       
       sahamTableBody.innerHTML = '';
@@ -193,7 +191,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   window.deleteSaham = async (id) => {
     if(!confirm('Apakah Anda yakin ingin menghapus data saham ini secara permanen?')) return;
     try {
-      const res = await fetch(`${API}/saham/${id}`, { method: 'DELETE', headers });
+      const res = await fetch(`/api/saham/${id}`, { method: 'DELETE', headers });
       if (res.ok) {
         loadSahamData();
       } else {
@@ -220,7 +218,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     try {
-      const res = await fetch(`${API}/saham/${id}`, {
+      const res = await fetch(`/api/saham/${id}`, {
         method: 'PUT',
         headers,
         body: JSON.stringify(bodyArgs)
@@ -248,7 +246,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function loadKonglomeratData() {
     konglomeratTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Loading data...</td></tr>';
     try {
-      const res = await fetch(`${API}/konglomerat`, { headers });
+      const res = await fetch('/api/konglomerat', { headers });
       const data = await res.json();
       
       konglomeratTableBody.innerHTML = '';
@@ -300,7 +298,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   window.deleteKonglomerat = async (id) => {
     if(!confirm('Yakin ingin menghapus profil ini?')) return;
     try {
-      const res = await fetch(`${API}/konglomerat/${id}`, { method: 'DELETE', headers });
+      const res = await fetch(`/api/konglomerat/${id}`, { method: 'DELETE', headers });
       if (res.ok) {
         loadKonglomeratData();
       } else {
@@ -324,7 +322,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     const method = id ? 'PUT' : 'POST';
-    const url = id ? `${API}/konglomerat/${id}` : `${API}/konglomerat`;
+    const url = id ? `/api/konglomerat/${id}` : '/api/konglomerat';
 
     try {
       const res = await fetch(url, {

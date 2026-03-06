@@ -1,5 +1,3 @@
-const API = window.CONFIG ? window.CONFIG.API_BASE : '/api';
-
 /**
  * Investor Profile Rendering Engine
  * Refactored for Smart Money Tracker
@@ -10,7 +8,7 @@ window.renderInvestorProfilePage = async (investorName) => {
   if (!container) return;
 
   try {
-    const res = await fetch(`${API}/investor/${encodeURIComponent(investorName)}`);
+    const res = await fetch(`/api/investor/${encodeURIComponent(investorName)}`);
     const data = await res.json();
     
     if (!data || !data.holdings || data.holdings.length === 0) {

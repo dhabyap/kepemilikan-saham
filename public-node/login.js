@@ -1,11 +1,9 @@
-const API = window.CONFIG ? window.CONFIG.API_BASE : '/api';
-
 // --- Check if already logged in ---
 document.addEventListener('DOMContentLoaded', async () => {
   const token = localStorage.getItem('adminToken');
   if (token) {
     try {
-      const res = await fetch(`${API}/verify`, {
+      const res = await fetch('/api/verify', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -33,7 +31,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
   errorMsg.textContent = '';
 
   try {
-    const res = await fetch(`${API}/login`, {
+    const res = await fetch('/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password })

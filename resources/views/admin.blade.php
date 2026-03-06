@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - Kepemilikan Saham</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ asset('style.css') }}">
+  <script>
+    window.CONFIG = {
+      API_BASE: "{{ url('/api') }}"
+    };
+  </script>
+  <style>
+    .admin-layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 2rem;
+      max-width: 1440px;
+      margin: 2rem auto;
+      padding: 0 2rem;
+    }
+
+    .sidebar-menu {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      background: white;
+      padding: 1rem;
+      border: 1px solid var(--sec-border);
+      box-shadow: var(--shadow-sm);
+      height: fit-content;
+    }
+
+    .sidebar-header {
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border-bottom: 2px solid var(--sec-gray-light);
+      font-weight: 800;
+      color: var(--sec-navy);
+      text-transform: uppercase;
+      font-size: 0.8rem;
+      letter-spacing: 0.1em;
+    }
+
+    .menu-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 1rem;
+      text-align: left;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 0.8rem;
+      letter-spacing: 0.05em;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .menu-btn:hover {
+      background: var(--sec-gray-light);
+      color: var(--sec-navy);
+    }
+
+    .menu-btn.active {
+      background: var(--sec-navy);
+      color: white;
+    }
+
+    .tab-content {
+      display: none;
+      animation: fadeUp 0.3s ease-out;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .action-group {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+    }
+
+    .btn-icon {
+      background: white;
+      border: 1px solid var(--sec-border);
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-icon:hover {
+      background: var(--sec-gray-light);
+      border-color: var(--sec-navy);
+    }
+  </style>
+</head>
+
+<body style="display:none;">
+
+  <header class="sec-header">
+    <div class="main-nav">
+      <div class="brand">
+        <div class="brand-logo">📂</div>
+        <div class="brand-text">
+          <h1>SEC CONTROL</h1>
+          <p>Institutional Filing Administration</p>
+        </div>
+      </div>
+      <div class="header-actions" style="display: flex; align-items: center; gap: 2rem;">
+        <a href="{{ url('/') }}"
+          style="color:white; text-decoration:none; font-weight: 700; font-size: 0.85rem; text-transform: uppercase;">Public
+          Portal</a>
+        <button id="logoutBtn" class="btn"
+          style="background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.3); font-size: 0.8rem;">Terminate
+          Session</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="admin-layout">
+    <aside class="sidebar-menu">
+      <div class="sidebar-header">Filing Console</div>
+      <button class="menu-btn active" data-tab="tab-upload">
+        <span style="font-size: 1.2rem;">📂</span> Upload PDF KSEI
+      </button>
+      <button class="menu-btn" data-tab="tab-saham">
+        <span style="font-size: 1.2rem;">📊</span> Kelola Data Saham
+      </button>
+      <button class="menu-btn" data-tab="tab-konglomerat">
+        <span style="font-size: 1.2rem;">🏢</span> Kelola Konglomerat
+      </button>
+    </aside>
+
+    <div class="main-content">
+      <section id="tab-upload" class="tab-content active">
+        <div class="panel">
+          <div class="panel-header">
+            <h2 class="panel-title">Upload & Ekstraksi Laporan PDF</h2>
+          </div>
+          <div class="panel-body" style="padding: 2rem;">
+            <form id="uploadForm">
+              <div class="drag-area" id="fileDropArea" onclick="document.getElementById('pdfFileInput').click()">
+                <span style="font-size: 3rem; margin-bottom: 1rem; display: block;">📄</span>
+                <p>Tarik & Lepas File PDF KSEI di Sini</p>
+                <input type="file" id="pdfFileInput" name="pdfFile" accept="application/pdf" style="display:none;">
+                <div id="selectedFileName" style="margin-top: 1rem; color: var(--accent-emerald); font-weight: 600;">
+                </div>
+              </div>
+              <button type="submit" id="uploadBtn" class="btn btn-primary" style="width: 100%; padding: 1rem;">🚀 Upload
+                & Timpa Data Lama</button>
+              <div id="uploadStatus" style="margin-top: 1rem; text-align: center;"></div>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-saham" class="tab-content">
+        <div class="panel">
+          <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <h2 class="panel-title">Kelola Data Kepemilikan Saham</h2>
+            <div style="font-size: 0.85rem; color: var(--text-muted);">Hanya menampilkan data terbaru (Top 100)</div>
+          </div>
+          <div class="panel-body table-wrapper" style="max-height: 600px;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Kode</th>
+                  <th>Investor</th>
+                  <th>Lembar Saham</th>
+                  <th>Persentase</th>
+                  <th style="text-align: right;">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="sahamTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-konglomerat" class="tab-content">
+        <div class="panel">
+          <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <h2 class="panel-title">Kelola Profil Konglomerat</h2>
+            <button class="btn btn-primary" id="addKonglomeratBtn">+ Tambah Konglomerat</button>
+          </div>
+          <div class="panel-body table-wrapper" style="max-height: 600px;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Nama Figur</th>
+                  <th>Nama Grup</th>
+                  <th>Portofolio Saham</th>
+                  <th style="text-align: right;">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="konglomeratTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div class="modal-overlay" id="sahamModal">
+    <div class="modal" style="max-width: 500px;">
+      <div class="modal-header">
+        <h2>Edit Kepemilikan Saham</h2><button class="modal-close" onclick="closeModal('sahamModal')">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 1.5rem;">
+        <form id="sahamEditForm">
+          <input type="hidden" id="editSahamId">
+          <div class="form-group"><label>Kode Saham</label><input type="text" class="form-input" id="editSahamCode"
+              required></div>
+          <div class="form-group"><label>Nama Issuer</label><input type="text" class="form-input" id="editSahamIssuer">
+          </div>
+          <div class="form-group"><label>Nama Investor</label><input type="text" class="form-input"
+              id="editSahamInvestor" required></div>
+          <div class="form-group"><label>Total Lembar Saham</label><input type="number" class="form-input"
+              id="editSahamShares" required></div>
+          <div class="form-group"><label>Persentase (%)</label><input type="number" step="0.01" class="form-input"
+              id="editSahamPct" required></div>
+          <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem;">
+            <button type="button" class="btn btn-ghost" onclick="closeModal('sahamModal')">Batal</button>
+            <button type="submit" class="btn btn-primary">Simpan</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="konglomeratModal">
+    <div class="modal" style="max-width: 500px;">
+      <div class="modal-header">
+        <h2 id="konglomeratModalTitle">Tambah Konglomerat</h2><button class="modal-close"
+          onclick="closeModal('konglomeratModal')">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 1.5rem;">
+        <form id="konglomeratForm">
+          <input type="hidden" id="formKonglomeratId">
+          <div class="form-group"><label>Nama Profil</label><input type="text" class="form-input" id="konglomeratNama"
+              required></div>
+          <div class="form-group"><label>Nama Grup</label><input type="text" class="form-input" id="konglomeratGrup"
+              required></div>
+          <div class="form-group"><label>Kode Emiten (koma)</label><input type="text" class="form-input"
+              id="konglomeratStocks" required></div>
+          <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem;">
+            <button type="button" class="btn btn-ghost" onclick="closeModal('konglomeratModal')">Batal</button>
+            <button type="submit" class="btn btn-primary">Simpan</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ asset('admin.js') }}"></script>
+</body>
+
+</html>

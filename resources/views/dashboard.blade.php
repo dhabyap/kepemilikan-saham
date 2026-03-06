@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EDGAR | Stock Ownership Disclosure - KSEI Monitoring</title>
+  <meta name="description"
+    content="Monitor institutional stock ownership disclosures from KSEI - Indonesia's Central Securities Depository data system.">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="{{ asset('style.css') }}">
+</head>
+
+<body>
+
+  <!-- MAIN NAVIGATION -->
+  <header class="sec-header">
+    <nav class="main-nav">
+      <div class="brand">
+        <div class="brand-logo">🏛️</div>
+        <div class="brand-text">
+          <h1>Stock Disclosure</h1>
+          <p>KSEI Institutional Monitoring System</p>
+        </div>
+      </div>
+      <div class="nav-links">
+        <a href="{{ url('/') }}" class="nav-link active">Home</a>
+        <a href="#filings" class="nav-link">Recent Filings</a>
+        <a href="#fractional" class="nav-link">IDX &gt;1%</a>
+        <a href="{{ url('/network.html') }}" class="nav-link">🔗 Network Graph</a>
+      </div>
+    </nav>
+  </header>
+
+  <!-- HERO / SEARCH SECTION -->
+  <section class="hero-section">
+    <div class="hero-content">
+      <h2>Search Shareholder Filings &amp; Disclosures</h2>
+      <div class="search-box-container" style="position: relative;">
+        <input type="text" id="issuerSearch" class="search-field"
+          placeholder="Search by Issuer Code, Company Name, or Investor...">
+        <button class="search-btn" onclick="performManualSearch()">Search</button>
+        <div id="searchResults" class="table-wrapper"
+          style="position: absolute; top: 100%; left: 0; right: 0; z-index: 100; display: none; margin-top: 8px; text-align: left; max-height: 380px; overflow-y: auto;">
+        </div>
+      </div>
+      <p style="margin-top: 1.25rem; font-size: 0.8rem; color: rgba(255,255,255,0.45);">Data source: Indonesian Central
+        Securities Depository (KSEI) · Bursa Efek Indonesia (IDX)</p>
+    </div>
+  </section>
+
+  <!-- MAIN DASHBOARD -->
+  <main class="container">
+
+    <!-- KPI ROW -->
+    <div class="metric-bar">
+      <div class="metric-mini">
+        <div>
+          <div class="value" id="stat-total-issuers">—</div>
+          <div class="label">Listed Tickers</div>
+        </div>
+        <div class="icon">📈</div>
+      </div>
+      <div class="metric-mini">
+        <div>
+          <div class="value" id="stat-total-investors">—</div>
+          <div class="label">Registered Investors</div>
+        </div>
+        <div class="icon">👥</div>
+      </div>
+      <div class="metric-mini">
+        <div>
+          <div class="value" id="stat-avg-pct">—</div>
+          <div class="label">Local Ownership</div>
+        </div>
+        <div class="icon">🇮🇩</div>
+      </div>
+      <div class="metric-mini">
+        <div>
+          <div class="value" id="stat-foreign-pct">—</div>
+          <div class="label">Foreign Ownership</div>
+        </div>
+        <div class="icon">🌏</div>
+      </div>
+    </div>
+
+    <!-- INSIGHT PANELS -->
+    <p class="section-label">Live Market Intelligence</p>
+    <div class="panel-grid">
+
+      <!-- PANEL: INVESTOR TYPES -->
+      <div class="data-panel">
+        <div class="panel-header">
+          <h3 class="panel-title">📊 Market Composition</h3>
+          <span class="panel-badge">Investor Type</span>
+        </div>
+        <div class="panel-body">
+          <ul id="marketOverviewList" class="data-list"></ul>
+        </div>
+      </div>
+
+      <!-- PANEL: POPULAR INVESTORS -->
+      <div class="data-panel">
+        <div class="panel-header">
+          <h3 class="panel-title">🔥 Most Active Investors</h3>
+          <span class="panel-badge gold">Ranked</span>
+        </div>
+        <div class="panel-body">
+          <ul id="popularInvestorsList" class="data-list"></ul>
+          <a href="{{ url('/network.html') }}"
+            style="display: block; text-align: center; padding: 0.85rem; background: linear-gradient(135deg, #e85d26, #bf4a1e); color: white; font-size: 0.72rem; font-weight: 800; text-decoration: none; text-transform: uppercase; letter-spacing: 0.08em; transition: opacity 0.2s;"
+            onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">🔗 Explore Network Graphs →</a>
+        </div>
+      </div>
+
+      <!-- PANEL: FOREIGN MAP -->
+      <div class="data-panel">
+        <div class="panel-header">
+          <h3 class="panel-title">🌏 Foreign Institution Map</h3>
+          <span class="panel-badge blue">Asing</span>
+        </div>
+        <div class="panel-body">
+          <ul id="topForeignList" class="data-list"></ul>
+        </div>
+      </div>
+
+      <!-- PANEL: SUB-MAJORITY (>1% IDX) -->
+      <div class="data-panel">
+        <div class="panel-header">
+          <h3 class="panel-title">📈 Sub-Majority Holders</h3>
+          <span class="panel-badge green">&gt;1% IDX Rule</span>
+        </div>
+        <div class="panel-body">
+          <ul id="subMajorityList" class="data-list"></ul>
+        </div>
+      </div>
+
+      <!-- PANEL: CONGLOMERATES -->
+      <div class="data-panel">
+        <div class="panel-header">
+          <h3 class="panel-title">🏢 Conglomerate Groups</h3>
+          <span class="panel-badge">Groups</span>
+        </div>
+        <div class="panel-body">
+          <ul id="conglomerateGridList" class="data-list"></ul>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- INSTITUTIONAL DISCLOSURE LOG (>5%) -->
+    <section id="filings" class="table-section">
+      <div class="table-section-header">
+        <h2 class="table-title"><span></span> Majority Stockholder Filings <small
+            style="font-size:0.75rem; color:#8896a5; font-weight:500;">(≥5% Threshold)</small></h2>
+        <div class="table-controls">
+          <button id="btnShowFullArchive" class="btn btn-gold">📂 Load Full Archive</button>
+          <select id="dateSelect" class="form-select">
+            <option value="">Latest Available</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-wrapper">
+        <div class="scroll-panel" style="max-height: 540px;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Ticker</th>
+                <th>Issuer Company</th>
+                <th>Investor / Shareholder</th>
+                <th>Investor Type</th>
+                <th>L/F</th>
+                <th>Ownership %</th>
+              </tr>
+            </thead>
+            <tbody id="holdingsTableBody">
+              <tr>
+                <td colspan="6" style="text-align:center; padding: 3rem; color: var(--text-muted);">Loading data...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- IDX NEW RULE: >1% FULL TABLE -->
+    <section id="fractional" class="table-section">
+      <div class="table-section-header">
+        <h2 class="table-title"><span style="background: var(--gold-500);"></span> IDX New Rule — Sub-Majority Filings
+          <small style="font-size:0.75rem; color:#8896a5; font-weight:500;">(1%–5% Threshold)</small></h2>
+        <div class="table-controls">
+          <button id="btnLoadMoreFractional" class="btn btn-ghost">📂 Load More</button>
+        </div>
+      </div>
+      <div class="table-wrapper">
+        <div class="scroll-panel" style="max-height: 480px;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Ticker</th>
+                <th>Issuer Company</th>
+                <th>Investor / Shareholder</th>
+                <th>Investor Type</th>
+                <th>L/F</th>
+                <th>Ownership %</th>
+              </tr>
+            </thead>
+            <tbody id="fractionalTableBody">
+              <tr>
+                <td colspan="6" style="text-align:center; padding: 3rem; color: var(--text-muted);">Loading data...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="sec-footer">
+    <div class="footer-content">
+      <div class="footer-col">
+        <h4>About This System</h4>
+        <p>The Stock Disclosure Monitoring System provides public access to institutional stock ownership data reported
+          through KSEI extraction. This portal is designed to enhance transparency in the Indonesian capital market.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Resources</h4>
+        <ul>
+          <li><a href="#">Public Disclosure Rules</a></li>
+          <li><a href="#">KSEI Data Standards</a></li>
+          <li><a href="#">Filing Instructions</a></li>
+          <li><a href="#">IDX Regulations</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Legal</h4>
+        <ul>
+          <li><a href="#">Privacy Policy</a></li>
+          <li><a href="#">Terms of Use</a></li>
+          <li><a href="#">Disclaimer</a></li>
+          <li><a href="#">Accessibility</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Contact</h4>
+        <ul>
+          <li><a href="#">Help Desk</a></li>
+          <li><a href="#">Press Office</a></li>
+          <li><a href="#">Email Support</a></li>
+          <li><a href="#">System Status</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div style="font-size: 0.72rem; opacity: 0.5; max-width: 800px;">DISCLAIMER: This website is a data visualization
+        tool. All information is based on public filings and may contain lag or processing errors. Users should verify
+        data with official KSEI reports before making investment decisions.</div>
+      <div style="font-size: 0.72rem; opacity: 0.45;">© 2026 KSEI Monitoring Dashboard. All Rights Reserved.</div>
+    </div>
+  </footer>
+
+  <div class="modal-overlay" id="issuerModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modalIssuerName">Issuer Details</h3>
+        <button style="background: none; border: none; color: white; cursor:pointer; font-size: 1.5rem; line-height: 1;"
+          onclick="closeModal('issuerModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="issuerDetailContent"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="{{ asset('app.js') }}"></script>
+  <script src="{{ asset('investor-profile.js') }}"></script>
+</body>
+
+</html>

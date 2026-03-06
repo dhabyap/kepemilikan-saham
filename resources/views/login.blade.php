@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login Admin - KSEI Dashboard</title>
+  <link rel="stylesheet" href="{{ asset('style.css') }}">
+  <script>
+    window.CONFIG = {
+      API_BASE: "{{ url('/api') }}"
+    };
+  </script>
+  <style>
+    .back-link {
+      display: inline-block;
+      margin-top: 1.5rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      text-align: center;
+      width: 100%;
+      transition: color 0.2s;
+    }
+
+    .back-link:hover {
+      color: var(--text-main);
+    }
+
+    .error-msg {
+      color: var(--accent-rose);
+      font-size: 0.9rem;
+      text-align: center;
+      margin-bottom: 1rem;
+      min-height: 20px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="auth-container">
+    <div class="auth-card">
+      <div class="auth-header">
+        <span class="auth-icon">👑</span>
+        <h1 class="auth-title">Admin Access</h1>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem;">Silakan masuk untuk mengelola data
+        </p>
+      </div>
+
+      <div id="errorMsg" class="error-msg"></div>
+
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="username" class="form-label">Email / Username</label>
+          <input type="text" id="username" class="form-input" placeholder="contoh@email.com" required autofocus>
+        </div>
+        <div class="form-group">
+          <label for="password" class="form-label">Password</label>
+          <input type="password" id="password" class="form-input" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="btn btn-primary" id="loginBtn"
+          style="width: 100%; padding: 0.8rem; font-size: 1rem; margin-top: 1rem;">
+          Secure Login &rarr;
+        </button>
+      </form>
+
+      <a href="{{ url('/') }}" class="back-link">&larr; Kembali ke Dashboard Publik</a>
+    </div>
+  </div>
+
+  <script src="{{ asset('login.js') }}"></script>
+</body>
+
+</html>
