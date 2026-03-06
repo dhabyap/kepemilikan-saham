@@ -10,14 +10,6 @@
 </head>
 <body>
 
-  <!-- TOP STRIPE -->
-  <div class="top-bar">
-    <a href="#">About EDGAR</a>
-    <a href="#">Filing Research</a>
-    <a href="#">Public Documents</a>
-    <a href="#">Contact</a>
-  </div>
-
   <!-- MAIN NAVIGATION -->
   <header class="sec-header">
     <nav class="main-nav">
@@ -32,6 +24,7 @@
         <a href="/" class="nav-link active">Home</a>
         <a href="#filings" class="nav-link">Recent Filings</a>
         <a href="#fractional" class="nav-link">IDX &gt;1%</a>
+        <a href="/network.html" class="nav-link">🔗 Network Graph</a>
         <a href="/login.html" class="nav-link">Staff Login</a>
       </div>
     </nav>
@@ -108,6 +101,7 @@
         </div>
         <div class="panel-body">
           <ul id="popularInvestorsList" class="data-list"></ul>
+          <a href="/network.html" style="display: block; text-align: center; padding: 0.85rem; background: linear-gradient(135deg, #e85d26, #bf4a1e); color: white; font-size: 0.72rem; font-weight: 800; text-decoration: none; text-transform: uppercase; letter-spacing: 0.08em; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">🔗 Explore Network Graphs →</a>
         </div>
       </div>
 
@@ -265,5 +259,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="app.js"></script>
+  <script src="investor-profile.js"></script>
 </body>
 </html>

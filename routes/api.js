@@ -29,6 +29,14 @@ router.get('/fractional-owners', SahamController.getFractionalOwners);
 router.get('/issuers', SahamController.getIssuers);
 router.get('/issuer/:code', SahamController.getIssuerDetail);
 router.get('/search', SahamController.search);
+router.get('/investor-network', SahamController.getInvestorNetwork);
+router.get('/investors/search', SahamController.searchInvestors);
+router.get('/investor/:name', SahamController.getInvestorDetail);
+
+// --- New Stock Price Endpoints ---
+router.get('/stocks/prices', SahamController.getStockPrices);
+router.get('/stocks/:symbol', SahamController.getStockPrice);
+router.get('/portfolio/value/:name', SahamController.getPortfolioValue);
 
 // --- Saham CRUD (Protected) ---
 router.put('/saham/:id', verifyToken, SahamController.updateSaham);

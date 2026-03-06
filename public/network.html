@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Network Graph | KSEI Stock Disclosure</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="app.js"></script>
+  <script src="investor-profile.js"></script>
+  <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+  <!-- jQuery & Select2 for Autocomplete -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+  <style>
+    .graph-page { background: var(--bg); min-height: 100vh; }
+
+    /* SEARCH BAR */
+    .graph-controls {
+      max-width: 1700px;
+      margin: 0 auto;
+      padding: 1.5rem 1.5rem 0;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      align-items: flex-start;
+    }
+    .graph-controls h2 {
+      font-size: 1rem;
+      font-weight: 800;
+      color: var(--text-primary);
+      white-space: nowrap;
+    }
+    .graph-search-wrap {
+      width: 100%;
+      max-width: 100%;
+      display: flex;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+    .graph-search-wrap input {
+      flex: 1;
+      border: none;
+      padding: 0.65rem 1rem;
+      font-size: 0.88rem;
+      font-family: 'Inter', sans-serif;
+      outline: none;
+      color: var(--text-primary);
+    }
+    .graph-search-wrap .select2-container {
+      flex: 1;
+      width: 100% !important;
+    }
+    .graph-search-wrap .select2-selection {
+      border: none !important;
+      height: 100% !important;
+      display: flex;
+      align-items: center;
+      padding-left: 0.5rem;
+      background: transparent;
+    }
+    .graph-search-wrap .select2-selection__rendered {
+      font-size: 0.88rem;
+      font-family: 'Inter', sans-serif;
+      color: var(--text-primary) !important;
+      line-height: normal !important;
+    }
+    .graph-search-wrap .select2-selection__arrow {
+      height: 100% !important;
+    }
+    .graph-search-wrap button {
+      background: var(--navy-500);
+      color: white;
+      border: none;
+      padding: 0 1.25rem;
+      font-weight: 700;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      cursor: pointer;
+      transition: background 0.2s;
+      height: 42px;
+    }
+    .graph-search-wrap button:hover { background: var(--navy-700); }
+
+    .quick-picks {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .quick-pick {
+      font-size: 0.7rem;
+      font-weight: 700;
+      background: white;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      padding: 0.35rem 0.8rem;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'Inter', sans-serif;
+      white-space: nowrap;
+    }
+    .quick-pick:hover { background: var(--navy-500); color: white; border-color: var(--navy-500); }
+
+    /* MAIN GRAPH AREA */
+    .graph-container {
+      max-width: 1700px;
+      margin: 1.5rem auto;
+      padding: 0 2.5rem 3rem;
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 1.5rem;
+      align-items: start;
+    }
+    .graph-canvas-card {
+      background: white;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .graph-canvas-header {
+      background: var(--navy-900);
+      padding: 1rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .graph-canvas-title {
+      font-size: 0.75rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: white;
+    }
+    .graph-legend {
+      display: flex;
+      gap: 1.25rem;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.65rem;
+      font-weight: 600;
+      color: rgba(255,255,255,0.6);
+    }
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    #networkCanvas {
+      width: 100%;
+      height: 560px;
+      background: #fafbfc;
+    }
+    .graph-empty-state {
+      height: 560px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      gap: 1rem;
+      background: #fafbfc;
+    }
+    .graph-empty-state .icon { font-size: 3.5rem; opacity: 0.3; }
+    .graph-empty-state p { font-size: 0.85rem; text-align: center; max-width: 260px; line-height: 1.6; }
+
+    /* SIDE PANEL */
+    .graph-sidebar { display: flex; flex-direction: column; gap: 1.25rem; }
+    .sidebar-card {
+      background: white;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .sidebar-card-header {
+      background: var(--navy-900);
+      padding: 0.85rem 1.25rem;
+      font-size: 0.7rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: rgba(255,255,255,0.8);
+    }
+    .sidebar-card-body { padding: 0; }
+    #holdingsList {
+      max-height: 440px;
+      overflow-y: auto;
+    }
+
+    /* CUSTOM SCROLLBAR */
+    #holdingsList::-webkit-scrollbar {
+      width: 6px;
+    }
+    #holdingsList::-webkit-scrollbar-track {
+      background: #f1f1f1;
+    }
+    #holdingsList::-webkit-scrollbar-thumb {
+      background: var(--navy-300);
+      border-radius: 10px;
+    }
+    #holdingsList::-webkit-scrollbar-thumb:hover {
+      background: var(--navy-500);
+    }
+
+    /* HOLDINGS LIST */
+    .holding-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.7rem 1.25rem;
+      border-bottom: 1px solid #f5f7fa;
+      cursor: pointer;
+      transition: background 0.15s;
+      gap: 0.75rem;
+    }
+    .holding-row:last-child { border-bottom: none; }
+    .holding-row:hover { background: #f8f9fb; }
+    .holding-row.selected { background: #eff6ff; border-left: 3px solid var(--navy-500); }
+    .holding-ticker {
+      background: var(--navy-900);
+      color: var(--gold-400);
+      font-size: 0.68rem;
+      font-weight: 800;
+      padding: 0.2rem 0.55rem;
+      border-radius: 3px;
+      flex-shrink: 0;
+      letter-spacing: 0.04em;
+    }
+    .holding-name {
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .holding-pct {
+      font-size: 0.8rem;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    /* NODE INFO */
+    .node-info-section { padding: 1.25rem; }
+    .node-detail-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.78rem;
+      padding: 0.35rem 0;
+      border-bottom: 1px solid #f5f7fa;
+    }
+    .node-detail-row:last-child { border-bottom: none; }
+    .node-detail-row .key { color: var(--text-muted); font-weight: 600; }
+    .node-detail-row .val { font-weight: 700; color: var(--text-primary); }
+
+    /* INVESTOR CHIP */
+    .investor-chip {
+      margin: 1rem;
+      background: linear-gradient(135deg, var(--navy-900), var(--navy-600));
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+      color: white;
+    }
+    .investor-chip .label { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--gold-300); margin-bottom: 0.4rem; }
+    .investor-chip .name { font-size: 0.9rem; font-weight: 800; line-height: 1.3; }
+    .investor-chip .meta { font-size: 0.7rem; color: rgba(255,255,255,0.55); margin-top: 0.4rem; }
+
+    @media (max-width: 1000px) {
+      .graph-container { grid-template-columns: 1fr; padding: 0 1.5rem 2rem; }
+      #networkCanvas { height: 400px; }
+      .graph-controls { padding: 1.5rem 1.5rem 0; }
+    }
+    
+    @media (max-width: 600px) {
+      .graph-canvas-header { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+      #networkCanvas { height: 350px; }
+      .graph-legend { flex-wrap: wrap; gap: 0.5rem 1rem; }
+    }
+  </style>
+</head>
+<body class="graph-page">
+
+  <!-- NAVBAR -->
+  <header class="sec-header">
+    <nav class="main-nav">
+      <div class="brand">
+        <div class="brand-logo">🏛️</div>
+        <div class="brand-text">
+          <h1>Stock Disclosure</h1>
+          <p>KSEI Institutional Monitoring System</p>
+        </div>
+      </div>
+      <div class="nav-links">
+        <a href="/" class="nav-link">Home</a>
+        <a href="/#filings" class="nav-link">Filings</a>
+        <a href="/network.html" class="nav-link active">Network Graph</a>
+        <a href="/login.html" class="nav-link">Staff Login</a>
+      </div>
+    </nav>
+  </header>
+
+  <!-- CONTROLS -->
+  <div class="graph-controls">
+    <h2>🔗 Investor Network Graph</h2>
+    <div class="graph-search-wrap">
+      <select id="investorInput" style="width: 100%;">
+        <option value="" disabled selected>Type an investor name, e.g. UOB KAY HIAN...</option>
+      </select>
+      <button onclick="loadGraph()">Show Graph</button>
+    </div>
+    <div class="quick-picks" id="quickPicks"></div>
+  </div>
+
+  <!-- GRAPH CANVAS + SIDEBAR -->
+  <div class="graph-container">
+
+    <!-- LEFT: GRAPH CANVAS -->
+    <div class="graph-canvas-card">
+      <div class="graph-canvas-header">
+        <div class="graph-canvas-title" id="graphTitle">Network Graph — Select an Investor</div>
+        <div class="graph-legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#e85d26;"></div>Investor</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#2a6fb8;"></div>Stock (local)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#6e9fd4;"></div>Stock (asing)</div>
+        </div>
+      </div>
+      <div id="networkCanvas">
+        <div class="graph-empty-state">
+          <div class="icon">🕸️</div>
+          <p>Search for an investor above to display their portfolio network graph</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: SIDEBAR -->
+    <div class="graph-sidebar">
+
+      <!-- INVESTOR SUMMARY -->
+      <div class="sidebar-card">
+        <div class="sidebar-card-header">Selected Investor</div>
+        <div id="investorChipArea">
+          <div style="padding: 1.5rem; text-align: center; color: var(--text-muted); font-size: 0.78rem;">No investor selected</div>
+        </div>
+      </div>
+
+      <!-- HOLDINGS LIST -->
+      <div class="sidebar-card">
+        <div class="sidebar-card-header">Portfolio Holdings</div>
+        <div class="sidebar-card-body" id="holdingsList">
+          <div style="padding: 1.5rem; text-align: center; color: var(--text-muted); font-size: 0.78rem;">—</div>
+        </div>
+      </div>
+
+      <!-- SELECTED NODE DETAIL -->
+      <div class="sidebar-card" id="nodeDetailCard" style="display: none;">
+        <div class="sidebar-card-header">Node Detail</div>
+        <div class="sidebar-card-body">
+          <div class="node-info-section" id="nodeDetailContent"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    let network = null;
+    let allNodes = [], allEdges = [];
+    let currentInvestor = '';
+
+    // ── Load quick picks from top investors
+    async function loadQuickPicks() {
+      try {
+        const res = await fetch('/api/top-investors?limit=10');
+        const data = await res.json();
+        const container = document.getElementById('quickPicks');
+        container.innerHTML = data.slice(0, 8).map(inv => `
+          <button class="quick-pick" onclick="selectInvestor('${escapeAttr(inv.investor_name)}')">${inv.investor_name.split(' ').slice(0,3).join(' ')}</button>
+        `).join('');
+      } catch(e) { console.error(e); }
+    }
+
+    function escapeAttr(str) {
+      return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    }
+
+    function selectInvestor(name) {
+      const $select = $('#investorInput');
+      // Append option if not exists to avoid select2 clearing it
+      if ($select.find("option[value='" + name + "']").length === 0) {
+        $select.append(new Option(name, name, true, true));
+      } else {
+        $select.val(name).trigger('change');
+      }
+      loadGraph();
+    }
+
+    async function loadGraph() {
+      const investor = $('#investorInput').val();
+      if (!investor) return;
+      currentInvestor = investor;
+
+      document.getElementById('graphTitle').textContent = 'Loading...';
+      document.getElementById('networkCanvas').innerHTML = '<div class="graph-empty-state"><div class="icon">⏳</div><p>Loading network data...</p></div>';
+
+      try {
+        const res = await fetch(`/api/investor-network?investor=${encodeURIComponent(investor)}`);
+        const data = await res.json();
+
+        if (!data.holdings || data.holdings.length === 0) {
+          document.getElementById('networkCanvas').innerHTML = `<div class="graph-empty-state"><div class="icon">🔍</div><p>No holdings found for "<strong>${investor}</strong>". Check the investor name spelling.</p></div>`;
+          document.getElementById('graphTitle').textContent = `No data — ${investor}`;
+          return;
+        }
+
+        renderGraph(data);
+        renderSidebar(data);
+        document.getElementById('graphTitle').textContent = `Network Graph — ${investor} (${data.holdings.length} holdings)`;
+      } catch(e) {
+        document.getElementById('networkCanvas').innerHTML = `<div class="graph-empty-state"><div class="icon">⚠️</div><p>Error loading graph: ${e.message}</p></div>`;
+      }
+    }
+
+    // Graph Renderers
+    function renderGraph(data) {
+      const nodes = [];
+      const edges = [];
+
+      // Center node: investor (orange)
+      nodes.push({
+        id: 'investor',
+        label: data.investor.split(' ').slice(0, 3).join('\n'),
+        title: data.investor,
+        color: { background: '#e85d26', border: '#bf4a1e', highlight: { background: '#f06d36', border: '#bf4a1e' } },
+        font: { color: 'white', size: 13, bold: true },
+        shape: 'dot',
+        size: 38,
+        mass: 5
+      });
+
+      // Stock nodes
+      data.holdings.forEach((h, i) => {
+        const isLocal = h.local_foreign === 'L';
+        const pct = parseFloat(h.percentage);
+        // Size based on ownership %
+        const nodeSize = Math.max(16, Math.min(34, pct * 0.4 + 14));
+        nodes.push({
+          id: `stock_${h.share_code}`,
+          label: h.share_code,
+          title: `<b>${h.share_code}</b><br>${h.issuer_name || ''}<br>${h.percentage}% ownership<br>${isLocal ? '🇮🇩 Lokal' : '🌏 Asing'}`,
+          color: {
+            background: isLocal ? '#4287f5' : '#85b7eb',
+            border: isLocal ? '#2563eb' : '#60a5fa',
+            highlight: { background: isLocal ? '#3b82f6' : '#93c5fd', border: isLocal ? '#1d4ed8' : '#3b82f6' }
+          },
+          font: { color: 'white', size: 11, bold: true },
+          shape: 'dot',
+          size: nodeSize,
+          holdingData: h
+        });
+        edges.push({
+          from: 'investor',
+          to: `stock_${h.share_code}`,
+          label: `${h.percentage}%`,
+          font: { size: 9, color: '#8896a5', align: 'middle' },
+          color: { color: isLocal ? '#2a6fb8' : '#6e9fd4', opacity: 0.5 },
+          width: Math.max(1, pct / 25),
+          smooth: { type: 'curvedCW', roundness: 0.1 }
+        });
+      });
+
+      const container = document.getElementById('networkCanvas');
+      container.innerHTML = '';
+
+      const visNodes = new vis.DataSet(nodes);
+      const visEdges = new vis.DataSet(edges);
+
+      const options = {
+        nodes: { 
+          borderWidth: 2,
+          shadow: {
+            enabled: true,
+            color: 'rgba(0,0,0,0.15)',
+            size: 10,
+            x: 5,
+            y: 5
+          }
+        },
+        edges: { 
+          arrows: { to: { enabled: false } },
+          shadow: { enabled: true, color: 'rgba(0,0,0,0.05)', size: 4, x: 2, y: 2 }
+        },
+        physics: {
+          enabled: true,
+          forceAtlas2Based: {
+            gravitationalConstant: -70,
+            centralGravity: 0.005,
+            springLength: 180,
+            springConstant: 0.04,
+            damping: 0.4,
+            avoidOverlap: 0.6
+          },
+          solver: 'forceAtlas2Based',
+          stabilization: { iterations: 150 }
+        },
+        interaction: {
+          hover: true,
+          tooltipDelay: 200,
+          navigationButtons: true,
+          keyboard: true
+        }
+      };
+
+      network = new vis.Network(container, { nodes: visNodes, edges: visEdges }, options);
+
+      network.on('click', function(params) {
+        if (params.nodes.length > 0) {
+          const nodeId = params.nodes[0];
+          if (nodeId === 'investor') {
+            showNodeDetail({ type: 'investor', name: data.investor, totalHoldings: data.holdings.length });
+          } else {
+            const nodeData = network.body.data.nodes.get(nodeId);
+            if (nodeData && nodeData.holdingData) {
+              showNodeDetail({ type: 'stock', ...nodeData.holdingData });
+              highlightHoldingRow(nodeData.holdingData.share_code);
+            }
+          }
+        }
+      });
+    }
+
+    function renderSidebar(data) {
+      document.getElementById('investorChipArea').innerHTML = `
+        <div class="investor-chip">
+          <div class="view-card-header">
+            <div class="view-card-title investor-name" style="cursor: pointer; text-decoration: underline;" onclick="window.location.href='/investor.html?name=${encodeURIComponent(data.investor)}'">${data.investor}</div>
+            <div class="view-card-subtitle">Comprehensive Portfolio Analysis</div>
+            <button class="btn btn-gold" onclick="window.location.href='/investor.html?name=${encodeURIComponent(data.investor)}'" style="margin-top: 1rem; width: 100%; border-radius: 4px; font-size: 0.7rem;">💎 View Premium Profile</button>
+          </div>
+          <div class="meta">${data.holdings.length} holdings &nbsp;·&nbsp; ${data.holdings.filter(h => h.local_foreign === 'L').length} Lokal &nbsp;·&nbsp; ${data.holdings.filter(h => h.local_foreign === 'A').length} Asing</div>
+        </div>
+      `;
+
+      const list = document.getElementById('holdingsList');
+      if (!data.holdings.length) {
+        list.innerHTML = '<div style="padding: 1.5rem; text-align: center; color: var(--text-muted); font-size: 0.78rem;">No holdings</div>';
+        return;
+      }
+
+      list.innerHTML = data.holdings.map(h => {
+        const pct = parseFloat(h.percentage);
+        const color = pct >= 50 ? '#c62828' : pct >= 20 ? '#f57f17' : '#2e7d32';
+        return `
+          <div class="holding-row" id="row_${h.share_code}" onclick="clickHoldingRow('${h.share_code}')">
+            <span class="holding-ticker">${h.share_code}</span>
+            <span class="holding-name" title="${h.issuer_name}">${h.issuer_name || '—'}</span>
+            <span class="holding-pct" style="color: ${color};">${h.percentage}%</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function showNodeDetail(info) {
+      const card = document.getElementById('nodeDetailCard');
+      const content = document.getElementById('nodeDetailContent');
+      card.style.display = 'block';
+
+      if (info.type === 'investor') {
+        content.innerHTML = `
+          <div class="node-detail-row"><span class="key">Type</span><span class="val">Investor Node</span></div>
+          <div class="node-detail-row"><span class="key">Name</span><span class="val">${info.name}</span></div>
+          <div class="node-detail-row"><span class="key">Total Holdings</span><span class="val">${info.totalHoldings}</span></div>
+          <div style="margin-top: 1rem; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 1rem;">
+            <a href="/investor.html?name=${encodeURIComponent(info.name)}" class="btn btn-gold" style="width: 100%; display: block; text-align: center; font-size: 0.7rem; border-radius: 4px; text-decoration: none;">💎 View Premium Profile</a>
+          </div>
+        `;
+      } else {
+        const color = parseFloat(info.percentage) >= 50 ? '#c62828' : parseFloat(info.percentage) >= 20 ? '#f57f17' : '#2e7d32';
+        content.innerHTML = `
+          <div class="node-detail-row"><span class="key">Ticker</span><span class="val">${info.share_code}</span></div>
+          <div class="node-detail-row"><span class="key">Issuer</span><span class="val">${info.issuer_name || '—'}</span></div>
+          <div class="node-detail-row"><span class="key">Ownership</span><span class="val" style="color:${color}; font-size:1rem;">${info.percentage}%</span></div>
+          <div class="node-detail-row"><span class="key">Type</span><span class="val">${info.investor_type || '—'}</span></div>
+          <div class="node-detail-row"><span class="key">L/F</span><span class="val">${info.local_foreign === 'L' ? '🇮🇩 Lokal' : '🌏 Asing'}</span></div>
+        `;
+      }
+    }
+
+    function clickHoldingRow(code) {
+      if (network) network.selectNodes([`stock_${code}`], true);
+      highlightHoldingRow(code);
+    }
+
+    function highlightHoldingRow(code) {
+      document.querySelectorAll('.holding-row').forEach(r => r.classList.remove('selected'));
+      const row = document.getElementById(`row_${code}`);
+      if (row) { row.classList.add('selected'); row.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+    }
+
+    // Init Select2
+    $(document).ready(function() {
+      $('#investorInput').select2({
+        placeholder: 'Type an investor name, e.g. UOB KAY HIAN...',
+        allowClear: true,
+        ajax: {
+          url: '/api/investors/search',
+          dataType: 'json',
+          delay: 250,
+          data: function (params) {
+            return {
+              q: params.term || '' // search term
+            };
+          },
+          processResults: function (data) {
+            return {
+              results: data.map(item => ({
+                id: item.investor_name,
+                text: item.investor_name
+              }))
+            };
+          },
+          cache: true
+        },
+        minimumInputLength: 2,
+        language: {
+           inputTooShort: function () {
+             return "Please enter 2 or more characters";
+           }
+        }
+      });
+      
+      // Load quick picks
+      loadQuickPicks();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Investor Profile | EDGAR Monitoring</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .page-header {
+      background: var(--navy-800);
+      padding: 1rem 2.5rem;
+      border-bottom: 3px solid var(--gold-500);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .back-btn {
+      color: var(--gold-400);
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 0.8rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: opacity 0.2s;
+    }
+    .back-btn:hover { opacity: 0.8; }
+    
+    .profile-container {
+      max-width: 1000px;
+      margin: 3rem auto;
+      padding: 0 1.5rem;
+    }
+
+    #profileContent.loading {
+      text-align: center;
+      padding: 5rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="page-header">
+    <div class="brand">
+      <div class="brand-logo">🏛️</div>
+      <div class="brand-text">
+        <h1 style="font-size: 1.1rem;">Investor Disclosure</h1>
+      </div>
+    </div>
+    <a href="javascript:history.back()" class="back-btn">← Back to Dashboard</a>
+  </div>
+
+  <main class="profile-container">
+    <div id="profileContent" class="loading">
+      <div class="spinner"></div>
+      <p style="margin-top: 1rem; font-weight: 600; letter-spacing: 0.05em;">RETRIEVING DISCLOSURE ARCHIVE...</p>
+    </div>
+  </main>
+
+  <!-- MODAL FOR ISSUER DETAILS -->
+  <div class="modal-overlay" id="issuerModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modalIssuerName">Issuer Details</h3>
+        <button style="background: none; border: none; color: white; cursor:pointer; font-size: 1.5rem; line-height: 1;" onclick="closeModal('issuerModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="issuerDetailContent"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="app.js"></script>
+  <script src="investor-profile.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const params = new URLSearchParams(window.location.search);
+      const name = params.get('name');
+      if (name) {
+        renderInvestorProfilePage(name);
+      } else {
+        document.getElementById('profileContent').innerHTML = '<p>No investor specified.</p>';
+      }
+    });
+  </script>
+</body>
+</html>

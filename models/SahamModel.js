@@ -2,14 +2,14 @@ const { pool } = require('../config/db');
 
 class SahamModel {
   static async getDates() {
-    const [rows] = await pool.query('SELECT DISTINCT date FROM kepemilikan_saham ORDER BY STR_TO_DATE(date, "%d-%b-%y") DESC');
+    const [rows] = await pool.query('SELECT DISTINCT date FROM kepemilikan_saham ORDER BY STR_TO_DATE(date, "%d-%b-%Y") DESC');
     return rows.map(r => r.date);
   }
 
   static async getLatestDate() {
-    const [rows] = await pool.query('SELECT MAX(STR_TO_DATE(date, "%d-%b-%y")) as max_date FROM kepemilikan_saham');
+    const [rows] = await pool.query('SELECT MAX(STR_TO_DATE(date, "%d-%b-%Y")) as max_date FROM kepemilikan_saham');
     if (rows[0].max_date) {
-      const [rawRows] = await pool.query('SELECT date FROM kepemilikan_saham ORDER BY STR_TO_DATE(date, "%d-%b-%y") DESC LIMIT 1');
+      const [rawRows] = await pool.query('SELECT date FROM kepemilikan_saham ORDER BY STR_TO_DATE(date, "%d-%b-%Y") DESC LIMIT 1');
       return rawRows.length ? rawRows[0].date : null;
     }
     return null;
@@ -93,6 +93,35 @@ class SahamModel {
     return rows;
   }
 
+  static async getInvestorNetwork(investorName, date) {
+    // Get all stocks held by a specific investor
+    const [holdings] = await pool.query(`
+      SELECT share_code, issuer_name, percentage, local_foreign, investor_type
+      FROM kepemilikan_saham
+      WHERE investor_name = ?
+        AND (date = ? OR ? IS NULL)
+      ORDER BY percentage DESC
+      LIMIT 50
+    `, [investorName, date, date]);
+
+    // Also find co-investors in the same stocks (for connected graph)
+    if (holdings.length === 0) return { investor: investorName, holdings: [], peers: [] };
+
+    const codes = holdings.map(h => h.share_code);
+    const placeholders = codes.map(() => '?').join(',');
+    const [peers] = await pool.query(`
+      SELECT investor_name, share_code, percentage
+      FROM kepemilikan_saham
+      WHERE share_code IN (${placeholders})
+        AND investor_name != ?
+        AND (date = ? OR ? IS NULL)
+        AND percentage >= 5
+      LIMIT 30
+    `, [...codes, investorName, date, date]);
+
+    return { investor: investorName, holdings, peers };
+  }
+
   static async getIssuers(date) {
     const [rows] = await pool.query(`
       SELECT 
@@ -146,19 +175,17 @@ class SahamModel {
     const [rows] = await pool.query(`
       SELECT 
         CASE 
-          WHEN investor_type = 'CP' THEN 'Korporat'
-          WHEN investor_type = 'ID' THEN 'Individu'
-          WHEN investor_type = 'IB' THEN 'Inv. Banking'
-          WHEN investor_type = 'IS' THEN 'Asuransi'
-          WHEN investor_type = 'SC' THEN 'Sekuritas'
-          WHEN investor_type = 'FD' THEN 'Yayasan'
-          WHEN investor_type = 'MF' THEN 'Reksadana'
-          WHEN investor_type = 'PF' THEN 'Dapen'
-          WHEN investor_type = 'OT' THEN 'Lainnya'
-          WHEN investor_type IS NULL OR investor_type = '' OR investor_type = '-' THEN 'Lainnya'
+          WHEN TRIM(investor_type) = 'CP' THEN 'Korporat'
+          WHEN TRIM(investor_type) = 'ID' THEN 'Individu'
+          WHEN TRIM(investor_type) = 'IB' THEN 'Inv. Banking'
+          WHEN TRIM(investor_type) = 'IS' THEN 'Asuransi'
+          WHEN TRIM(investor_type) = 'SC' THEN 'Sekuritas'
+          WHEN TRIM(investor_type) = 'FD' THEN 'Yayasan'
+          WHEN TRIM(investor_type) = 'MF' THEN 'Reksadana'
+          WHEN TRIM(investor_type) = 'PF' THEN 'Dapen'
           ELSE 'Lainnya'
         END as type_label,
-        investor_type as type_code,
+        MAX(investor_type) as type_code,
         COUNT(*) as record_count,
         COUNT(DISTINCT investor_name) as investor_count,
         COUNT(DISTINCT share_code) as issuer_count,
@@ -166,7 +193,7 @@ class SahamModel {
         ROUND(AVG(percentage), 2) as avg_percentage
       FROM kepemilikan_saham
       WHERE date = ? OR ? IS NULL
-      GROUP BY investor_type
+      GROUP BY type_label
       ORDER BY record_count DESC
     `, [date, date]);
     return rows;
@@ -192,6 +219,18 @@ class SahamModel {
       ORDER BY percentage DESC
       LIMIT 50
     `, [`%${q}%`, `%${q}%`, `%${q}%`, date, date]);
+    return rows;
+  }
+
+  static async searchInvestors(q, date) {
+    const [rows] = await pool.query(`
+      SELECT DISTINCT investor_name
+      FROM kepemilikan_saham
+      WHERE UPPER(investor_name) LIKE UPPER(?)
+        AND (date = ? OR ? IS NULL)
+      ORDER BY investor_name ASC
+      LIMIT 10
+    `, [`%${q}%`, date, date]);
     return rows;
   }
 
@@ -253,6 +292,29 @@ class SahamModel {
 
   static async delete(id) {
     await pool.query('DELETE FROM kepemilikan_saham WHERE id = ?', [id]);
+  }
+  static async getInvestorDetail(name, date) {
+    const [rows] = await pool.query(`
+      SELECT 
+        s.*,
+        p.price as current_price,
+        p.previous_close,
+        p.change_percent,
+        p.market_cap,
+        COALESCE(s.total_holding_shares * p.price, 0) as market_value,
+        (
+          SELECT COUNT(*) + 1 
+          FROM kepemilikan_saham s2 
+          WHERE s2.share_code = s.share_code 
+            AND s2.date = s.date 
+            AND s2.percentage > s.percentage
+        ) as shareholder_rank
+      FROM kepemilikan_saham s
+      LEFT JOIN stock_prices p ON s.share_code = p.share_code
+      WHERE s.investor_name = ? AND (s.date = ? OR ? IS NULL)
+      ORDER BY market_value DESC
+    `, [name, date, date]);
+    return rows;
   }
 }
 

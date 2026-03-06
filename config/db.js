@@ -3,10 +3,10 @@ const fs = require('fs');
 const path = require('path');
 
 const dbConfig = {
-  host: 'localhost',
-  user: 'root',
-  password: '', // Laragon default is empty password
-  database: 'kepemilikan_saham_db'
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'kepemilikan_saham_db'
 };
 
 const pool = mysql.createPool(dbConfig);
@@ -72,6 +72,39 @@ async function initDatabase() {
         console.log('✓ Konglomerat data seeded');
       }
     }
+    
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS stock_prices (
+        share_code VARCHAR(20) PRIMARY KEY,
+        price DECIMAL(10, 2) NOT NULL,
+        previous_close DECIMAL(10, 2) DEFAULT 0,
+        change_percent DECIMAL(10, 2) DEFAULT 0,
+        market_cap DECIMAL(20, 2) DEFAULT 0,
+        last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
+
+    const dummyPrices = [
+      // [Ticker, Price, Market Cap in Triliun]
+      ['WIFI', 2570, 5.2], ['DATA', 3920, 8.1], ['MINA', 388, 0.4], ['FOLK', 630, 1.2],
+      ['TRIN', 1020, 2.5], ['ELTY', 51, 1.1], ['NINE', 143, 0.3], ['VIVA', 41, 0.8],
+      ['MENN', 53, 0.2], ['ANDI', 29, 0.1], ['TRUE', 50, 0.5], ['BBCA', 9850, 1214.0],
+      ['BBRI', 4850, 735.0], ['TLKM', 2850, 282.0], ['ASII', 5150, 208.0], ['GOTO', 52, 62.1],
+      ['CBRE', 55, 0.12], ['RMKO', 340, 1.5], ['SOTS', 210, 0.4], ['BMRI', 6800, 634.0],
+      ['BBNI', 5200, 194.0], ['UNVR', 2400, 91.0], ['ICBP', 11500, 134.0], ['INDF', 7000, 61.0],
+      ['ADRO', 3600, 115.0], ['UNTR', 25000, 93.0], ['PGAS', 1500, 36.0], ['PTBA', 2800, 32.0],
+      ['KLBF', 1600, 75.0], ['ANTM', 1500, 36.0], ['INCO', 4000, 40.0], ['BRPT', 1000, 93.0],
+      ['TPIA', 8500, 735.0], ['CPIN', 5000, 82.0], ['AMRT', 3000, 124.0], ['MDKA', 2500, 60.0],
+      ['MEDC', 1300, 32.0], ['HRUM', 1350, 18.0], ['INKP', 8000, 43.0], ['TKIM', 7000, 22.0],
+      ['BREN', 7000, 936.5], ['CUAN', 8000, 90.0], ['PTRO', 10000, 10.1], ['AMMN', 9000, 650.0]
+    ];
+    for (const [code, price, cap] of dummyPrices) {
+      const capInFull = cap * 1000000000000; // Triliun to Rupiah
+      await connection.query('INSERT INTO stock_prices (share_code, price, market_cap) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE price = ?, market_cap = ?', 
+        [code, price, capInFull, price, capInFull]);
+    }
+    console.log('✓ Stock prices & market cap synced');
+
     
     console.log('✓ Database and tables initialized');
     await connection.end();
