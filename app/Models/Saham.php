@@ -13,9 +13,17 @@ class Saham extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'date', 'share_code', 'issuer_name', 'investor_name', 'investor_address',
-        'investor_city', 'investor_zip', 'investor_country', 'investor_type',
-        'local_foreign', 'shares_scrip', 'shares_scripless', 'total_holding_shares',
+        'date',
+        'share_code',
+        'issuer_name',
+        'investor_name',
+        'investor_type',
+        'local_foreign',
+        'nationality',
+        'domicile',
+        'holdings_scripless',
+        'holdings_scrip',
+        'total_holding_shares',
         'percentage'
     ];
 }

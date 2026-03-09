@@ -5,12 +5,17 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SahamController;
 use App\Http\Controllers\StatsController;
 use App\Http\Controllers\KonglomeratController;
+use App\Http\Controllers\AuthController;
 
 /*
 |--------------------------------------------------------------------------
 | API Routes
 |--------------------------------------------------------------------------
 */
+
+// --- Auth ---
+Route::post('/login', [AuthController::class, 'login']);
+Route::get('/verify', [AuthController::class, 'verify']);
 
 // --- Stats & Visualizations ---
 Route::get('/stats', [StatsController::class, 'getStats']);
@@ -39,26 +44,6 @@ Route::get('/stocks/{symbol}', [SahamController::class, 'getStockPrice']);
 
 // --- Konglomerat Queries ---
 Route::get('/konglomerat', [KonglomeratController::class, 'getAll']);
-
-Route::post('/login', function (Request $request) {
-    if ($request->json('username') === env('ADMIN_USERNAME') && $request->json('password') === env('ADMIN_PASSWORD')) {
-        return response()->json([
-            'success' => true,
-            'token' => 'mock-token-' . time(),
-            'user' => ['username' => $request->json('username')]
-        ]);
-    }
-    return response()->json(['error' => 'Invalid credentials'], 401);
-});
-
-Route::get('/verify', function (Request $request) {
-    // Simple mock verification
-    $token = $request->header('Authorization');
-    if ($token && str_contains($token, 'mock-token-')) {
-        return response()->json(['success' => true]);
-    }
-    return response()->json(['error' => 'Unauthorized'], 401);
-});
 
 Route::middleware('api')->group(function () {
     Route::post('/konglomerat', [KonglomeratController::class, 'create']);
