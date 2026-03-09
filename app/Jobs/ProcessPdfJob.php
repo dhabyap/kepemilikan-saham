@@ -17,6 +17,11 @@ class ProcessPdfJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    /**
+     * The number of seconds the job can run before timing out.
+     */
+    public $timeout = 3600; // 1 hour
+
     protected $pdfUpload;
 
     public function __construct(PdfUpload $pdfUpload)
@@ -26,13 +31,14 @@ class ProcessPdfJob implements ShouldQueue
 
     public function handle(): void
     {
+        // Don't re-process if already done
         if ($this->pdfUpload->status === 'completed')
             return;
 
         $this->pdfUpload->update(['status' => 'processing']);
 
         try {
-            // Increase limits for background processing
+            // Background workers have their own PHP limits
             set_time_limit(0);
             ini_set('memory_limit', '1024M');
 
@@ -42,13 +48,16 @@ class ProcessPdfJob implements ShouldQueue
                 throw new \Exception("File not found at: " . $pdfPath);
             }
 
-            // Phase 1: Extraction (if not yet done)
-            if (empty($this->pdfUpload->extracted_data)) {
+            // Phase 1: EXTRACTION (Heavy lifting)
+            // If data was already extracted, we skip this to save time
+            $allRecords = $this->pdfUpload->extracted_data;
+
+            if (empty($allRecords)) {
                 $parser = new Parser();
                 $pdf = $parser->parseFile($pdfPath);
 
                 $allRecords = [];
-                $seen = [];
+                $seenKeys = []; // To prevent duplicates within the SAME PDF
 
                 $pages = $pdf->getPages();
                 foreach ($pages as $page) {
@@ -60,6 +69,7 @@ class ProcessPdfJob implements ShouldQueue
                         if (empty($line))
                             continue;
 
+                        // Extraction Logic (Anchor-based regex)
                         if (!preg_match('/^(\d{2}-[A-Za-z]{3}-\d{2,4})/', $line, $dateMatches))
                             continue;
 
@@ -128,9 +138,9 @@ class ProcessPdfJob implements ShouldQueue
                         ];
 
                         $key = "{$record['date']}|{$record['share_code']}|{$record['investor_name']}";
-                        if (isset($seen[$key]))
+                        if (isset($seenKeys[$key]))
                             continue;
-                        $seen[$key] = true;
+                        $seenKeys[$key] = true;
 
                         $allRecords[] = $record;
                     }
@@ -140,14 +150,11 @@ class ProcessPdfJob implements ShouldQueue
                     throw new \Exception('No records extracted from PDF. Format mismatch.');
                 }
 
-                // Save extracted JSON for future reference
+                // Save JSON for persistence (user can view later)
                 $this->pdfUpload->update(['extracted_data' => $allRecords]);
-            } else {
-                $allRecords = $this->pdfUpload->extracted_data;
             }
 
-            // Phase 2: Batch Insertion
-            // Filter duplicates (Historical Data Retention)
+            // Phase 2: BATCH INSERTION with Duplicate Prevention
             $datesInPdf = array_unique(array_column($allRecords, 'date'));
             $existingRecords = Saham::whereIn('date', $datesInPdf)
                 ->select('date', 'share_code', 'investor_name')
@@ -168,6 +175,7 @@ class ProcessPdfJob implements ShouldQueue
 
             $insertedCount = 0;
             if (!empty($recordsToInsert)) {
+                // Batch of 500 for database efficiency
                 $chunks = array_chunk($recordsToInsert, 500);
                 foreach ($chunks as $chunk) {
                     Saham::insert($chunk);
@@ -181,11 +189,11 @@ class ProcessPdfJob implements ShouldQueue
                 'processed_count' => $insertedCount
             ]);
 
-            // Cleanup temp PDF after successful processing
+            // Optional: Cleanup temp PDF after success
             Storage::delete($this->pdfUpload->file_path);
 
         } catch (\Exception $e) {
-            Log::error("PDF Background Full Processing Failed: " . $e->getMessage());
+            Log::error("PDF Background Job Failed: " . $e->getMessage());
             $this->pdfUpload->update([
                 'status' => 'failed',
                 'error_message' => $e->getMessage()
