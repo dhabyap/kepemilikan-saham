@@ -37,6 +37,8 @@ Route::get('/investor/{name}', [SahamController::class, 'getInvestorDetail']);
 
 // --- Upload ---
 Route::post('/upload-pdf', [\App\Http\Controllers\UploadController::class, 'uploadPdf']);
+Route::get('/upload-status/{id}', [\App\Http\Controllers\UploadController::class, 'getUploadStatus']);
+Route::get('/uploads', [\App\Http\Controllers\UploadController::class, 'getAllUploads']);
 
 // --- Stock Price Endpoints ---
 Route::get('/stocks/prices', [SahamController::class, 'getStockPrices']);

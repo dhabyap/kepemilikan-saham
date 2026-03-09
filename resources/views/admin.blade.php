@@ -158,9 +158,32 @@
                 </div>
               </div>
               <button type="submit" id="uploadBtn" class="btn btn-primary" style="width: 100%; padding: 1rem;">🚀 Upload
-                & Timpa Data Lama</button>
+                & Proses Data Baru</button>
               <div id="uploadStatus" style="margin-top: 1rem; text-align: center;"></div>
             </form>
+
+            <div style="margin-top: 3rem;">
+              <h3
+                style="font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--sec-navy); margin-bottom: 1rem;">
+                Recent Uploads</h3>
+              <div class="table-wrapper">
+                <table class="data-table" style="font-size: 0.8rem;">
+                  <thead>
+                    <tr>
+                      <th>File Name</th>
+                      <th>Status</th>
+                      <th>Count</th>
+                      <th>Time</th>
+                    </tr>
+                  </thead>
+                  <tbody id="uploadHistoryBody">
+                    <tr>
+                      <td colspan="4" style="text-align:center;">No recent uploads.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </div>
       </section>

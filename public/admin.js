@@ -93,6 +93,47 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
+  const uploadHistoryBody = document.getElementById('uploadHistoryBody');
+
+  async function loadUploadHistory() {
+    try {
+      const res = await fetch(`${API}/uploads`, { headers });
+      const data = await res.json();
+      
+      if (!data || data.length === 0) {
+        uploadHistoryBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No recent uploads.</td></tr>';
+        return;
+      }
+
+      uploadHistoryBody.innerHTML = '';
+      data.forEach(item => {
+        const tr = document.createElement('tr');
+        let statusColor = 'var(--text-muted)';
+        if (item.status === 'completed') statusColor = 'var(--accent-emerald)';
+        if (item.status === 'failed') statusColor = 'var(--accent-rose)';
+        if (item.status === 'processing') statusColor = 'var(--accent-navy)';
+
+        tr.innerHTML = `
+          <td>${item.original_name}</td>
+          <td><span style="color:${statusColor}; font-weight:700; text-transform:uppercase; font-size:0.75rem;">${item.status}</span></td>
+          <td class="number-cell">${item.processed_count || 0}</td>
+          <td>${new Date(item.created_at).toLocaleString('id-ID')}</td>
+        `;
+        uploadHistoryBody.appendChild(tr);
+      });
+
+      // If any is processing, poll again soon
+      if (data.some(d => d.status === 'processing' || d.status === 'pending')) {
+        setTimeout(loadUploadHistory, 3000);
+      }
+    } catch (err) {
+      console.error('History load error:', err);
+    }
+  }
+
+  // Initial history load
+  loadUploadHistory();
+
   uploadForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const file = fileInput.files[0];
@@ -106,24 +147,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     formData.append('pdfFile', file);
 
     uploadBtn.disabled = true;
-    uploadBtn.innerHTML = 'Memproses Extraction... 🔄';
-    uploadStatus.innerHTML = '<span style="color:var(--text-muted)">Sedang mengekstrak data JSON menggunakan AI. Proses ini bisa memakan waktu hingga beberapa menit. Tolong jangan tutup halaman ini.</span>';
+    uploadBtn.innerHTML = 'Uploading... 🔄';
+    uploadStatus.innerHTML = '<span style="color:var(--text-muted)">Uploading file ke server...</span>';
 
     try {
       const response = await fetch(`${API}/upload-pdf`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}` 
-        },
+        headers: { 'Authorization': `Bearer ${token}` },
         body: formData 
       });
 
       const result = await response.json();
 
       if (response.ok) {
-        uploadStatus.innerHTML = `<span style="color:var(--accent-emerald)">Berhasil: ${result.message}</span>`;
+        uploadStatus.innerHTML = `<span style="color:var(--accent-emerald)">Upload Berhasil!</span> <br> <small style="color:var(--text-muted)">File sedang diproses di background. Pantau status di tabel "Recent Uploads".</small>`;
         fileInput.value = '';
         selectedFileName.textContent = '';
+        loadUploadHistory(); // Refresh history
       } else {
         throw new Error(result.error + ": " + (result.details || ''));
       }
@@ -131,7 +171,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       uploadStatus.innerHTML = `<span style="color:var(--accent-rose)">Gagal: ${error.message}</span>`;
     } finally {
       uploadBtn.disabled = false;
-      uploadBtn.innerHTML = '🚀 Upload & Timpa Data Lama';
+      uploadBtn.innerHTML = '🚀 Upload & Proses Data Baru';
     }
   });
 

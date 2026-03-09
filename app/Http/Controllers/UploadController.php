@@ -22,15 +22,23 @@ class UploadController extends Controller
 
         try {
             $result = $this->uploadService->processPdf($request->file('pdfFile'));
-            return response()->json([
-                'success' => true,
-                'message' => "Successfully imported {$result['count']} records"
-            ]);
+            return response()->json($result);
         } catch (\Exception $e) {
             return response()->json([
                 'error' => 'Upload failed',
                 'details' => $e->getMessage()
             ], 500);
         }
+    }
+
+    public function getUploadStatus($id)
+    {
+        $upload = \App\Models\PdfUpload::findOrFail($id);
+        return response()->json($upload);
+    }
+
+    public function getAllUploads()
+    {
+        return response()->json(\App\Models\PdfUpload::orderBy('created_at', 'desc')->limit(10)->get());
     }
 }
