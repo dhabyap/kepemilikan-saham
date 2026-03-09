@@ -20,9 +20,10 @@ class UploadService
         }
 
         $scriptPath = base_path('extract_data.py');
+        $pythonBinary = env('PYTHON_BINARY', 'python');
 
-        // Use 'python' or 'python3' depending on environment
-        $process = new Process(['python', $scriptPath, $pdfPath, $jsonPath]);
+        // Use configured python binary from .env
+        $process = new Process([$pythonBinary, $scriptPath, $pdfPath, $jsonPath]);
         $process->run();
 
         if (!$process->isSuccessful()) {
