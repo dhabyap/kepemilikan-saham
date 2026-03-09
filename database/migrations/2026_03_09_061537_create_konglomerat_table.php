@@ -10,17 +10,16 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        if (!Schema::hasTable('konglomerat')) {
-            Schema::create('konglomerat', function (Blueprint $table) {
-                $table->id();
-                $table->string('nama', 255);
-                $table->string('nama_grup', 255)->nullable();
-                $table->json('stocks')->nullable();
-                $table->json('sector')->nullable();
-                $table->string('role', 255)->nullable();
-                $table->timestamps();
-            });
-        }
+        Schema::dropIfExists('konglomerat');
+        Schema::create('konglomerat', function (Blueprint $table) {
+            $table->id();
+            $table->string('nama', 255);
+            $table->string('nama_grup', 255)->nullable();
+            $table->json('stocks')->nullable();
+            $table->json('sector')->nullable();
+            $table->string('role', 255)->nullable();
+            $table->timestamps();
+        });
     }
 
     public function down(): void
