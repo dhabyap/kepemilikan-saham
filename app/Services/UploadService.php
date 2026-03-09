@@ -14,7 +14,7 @@ class UploadService
         $originalName = $file->getClientOriginalName();
         $fileName = time() . '_' . Str::random(10) . '.pdf';
 
-        // Save file to storage
+        // Save file to storage - this is temporary, the job will handle extraction
         $path = $file->storeAs('uploads/pdfs', $fileName);
 
         // Create tracking record
@@ -24,7 +24,7 @@ class UploadService
             'status' => 'pending'
         ]);
 
-        // Dispatch Job
+        // Dispatch Job - ProcessPdfJob will handle EXTRACTION then INSERTION
         ProcessPdfJob::dispatch($pdfUpload);
 
         return [
