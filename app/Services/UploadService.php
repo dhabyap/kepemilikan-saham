@@ -16,17 +16,20 @@ class UploadService
      */
     public function processPdf($file)
     {
-        // DETEKSI KONEKSI ANTRIAN (Sangat Penting untuk Debug Timeout)
+        $startTime = microtime(true);
         $connection = config('queue.default');
-        Log::info("UploadService: Starting upload process. Queue Connection: " . $connection);
+
+        Log::info("UploadService: [START] Processing file. Connection: $connection");
+        Log::info("UploadService: Server Limits - Max Execution: " . ini_get('max_execution_time') . "s, Memory: " . ini_get('memory_limit'));
 
         $originalName = $file->getClientOriginalName();
         $fileName = time() . '_' . Str::random(10) . '.pdf';
 
         // Phase 1: FAST FILE SAVE
         // Jika file sangat besar (>50MB), proses penyimpanan ini bisa memakan waktu di server yang lambat.
+        Log::info("UploadService: Storing file locally...");
         $path = $file->storeAs('uploads/pdfs', $fileName);
-        Log::info("UploadService: File saved at " . $path);
+        Log::info("UploadService: File stored at $path in " . (microtime(true) - $startTime) . " seconds");
 
         // Phase 2: CREATE TRACKING RECORD
         $pdfUpload = PdfUpload::create([
