@@ -11,6 +11,10 @@ class UploadService
 {
     public function processPdf($file)
     {
+        // Increase limits for large PDF files
+        set_time_limit(0);
+        ini_set('memory_limit', '512M');
+
         $pdfPath = $file->getRealPath();
 
         $parser = new Parser();
