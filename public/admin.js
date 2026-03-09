@@ -160,7 +160,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       const result = await response.json();
 
       if (response.ok) {
-        uploadStatus.innerHTML = `<span style="color:var(--accent-emerald)">Upload Berhasil!</span> <br> <small style="color:var(--text-muted)">File sedang diproses di background. Pantau status di tabel "Recent Uploads".</small>`;
+        let msg = `<span style="color:var(--accent-emerald)">Upload Berhasil!</span> <br> <small style="color:var(--text-muted)">File sedang diproses. </small>`;
+        
+        if (result.debug_queue === 'sync') {
+          msg += `<br><span style="color:var(--accent-rose); font-weight:bold;">PERINGATAN: Server menggunakan mode 'sync'.</span> <br> <small style="color:var(--text-muted)">Ini akan menyebabkan Timeout jika file besar. Harap ubah QUEUE_CONNECTION ke 'database' di .env server.</small>`;
+        } else {
+          msg += `<br><small style="color:var(--text-muted)">Mode: <b>Background (Success)</b>. Pantau status di tabel bawah.</small>`;
+        }
+        
+        uploadStatus.innerHTML = msg;
         fileInput.value = '';
         selectedFileName.textContent = '';
         loadUploadHistory(); // Refresh history
