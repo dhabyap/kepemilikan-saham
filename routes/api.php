@@ -23,6 +23,7 @@ Route::get('/top-investors', [StatsController::class, 'getTopInvestors']);
 Route::get('/local-vs-foreign', [StatsController::class, 'getLocalVsForeign']);
 Route::get('/investor-types', [StatsController::class, 'getInvestorTypes']);
 Route::get('/most-distributed', [StatsController::class, 'getMostDistributed']);
+Route::get('/top-searches', [StatsController::class, 'getTopSearches']);
 
 // --- Saham Queries ---
 Route::get('/dates', [SahamController::class, 'getDates']);

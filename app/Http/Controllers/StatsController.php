@@ -40,4 +40,10 @@ class StatsController extends Controller
         $limit = $request->query('limit', 10);
         return response()->json($this->statsService->getMostDistributed($request->query('date'), $limit));
     }
+
+    public function getTopSearches(Request $request)
+    {
+        $limit = $request->query('limit', 5);
+        return response()->json($this->statsService->getTopSearches($limit));
+    }
 }

@@ -40,6 +40,12 @@ class SahamController extends Controller
             return response()->json(['error' => 'investor query param required'], 400);
         }
         $data = $this->sahamService->getInvestorNetwork($investor, $request->query('date'));
+
+        // Log search query
+        if ($data && !empty($data['holdings'])) {
+            $this->sahamService->logSearch($investor);
+        }
+
         return response()->json($data);
     }
 

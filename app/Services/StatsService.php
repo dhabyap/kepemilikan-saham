@@ -113,4 +113,9 @@ class StatsService
             ->limit($limit)
             ->get();
     }
+
+    public function getTopSearches($limit = 5)
+    {
+        return $this->sahamService->getTopSearches($limit);
+    }
 }

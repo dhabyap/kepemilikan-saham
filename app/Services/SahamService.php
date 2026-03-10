@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Models\Saham;
+use App\Models\SearchLog;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class SahamService
 {
@@ -99,5 +101,32 @@ class SahamService
             'holdings' => $holdings,
             'peers' => $peers
         ];
+    }
+
+    public function logSearch($queryText)
+    {
+        if (empty($queryText))
+            return;
+
+        $log = SearchLog::where('query_text', $queryText)->first();
+        if ($log) {
+            $log->increment('search_count');
+            $log->last_searched_at = Carbon::now();
+            $log->save();
+        } else {
+            SearchLog::create([
+                'query_text' => $queryText,
+                'search_count' => 1,
+                'last_searched_at' => Carbon::now()
+            ]);
+        }
+    }
+
+    public function getTopSearches($limit = 5)
+    {
+        return SearchLog::orderByDesc('search_count')
+            ->orderByDesc('last_searched_at')
+            ->limit($limit)
+            ->get();
     }
 }

@@ -210,12 +210,13 @@ class ProcessPdfJob implements ShouldQueue
             // Optional: Cleanup temp PDF after success
             Storage::delete($this->pdfUpload->file_path);
 
-        } catch (\Exception $e) {
-            Log::error("PDF Background Job Failed: " . $e->getMessage());
+        } catch (\Throwable $e) {
+            Log::error("PDF Background Job Failed: " . $e->getMessage() . "\n" . $e->getTraceAsString());
             $this->pdfUpload->update([
                 'status' => 'failed',
                 'error_message' => $e->getMessage()
             ]);
+            throw $e; // Re-throw to let the queue worker know it failed
         }
     }
 

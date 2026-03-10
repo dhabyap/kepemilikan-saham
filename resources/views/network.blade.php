@@ -160,6 +160,8 @@
       font-size: 0.7rem;
       color: rgba(255, 255, 255, 0.55);
       margin-top: 0.4rem;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
     }
 
     @media (max-width: 1000px) {
@@ -263,19 +265,19 @@
       </div>
 
       <div class="sidebar-card">
-        <h4>Quick Explore</h4>
+        <h4>Top Searches</h4>
         <div id="quickInvestors">
-          <div class="investor-chip" onclick="loadNetwork('LOW TUCK KWONG')">
-            <div class="name">LOW TUCK KWONG</div>
-            <div class="meta">Major Majority Holder (BYAN)</div>
+          <div style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 1rem;">
+            No recent searches yet.
           </div>
-          <div class="investor-chip" onclick="loadNetwork('GOVERNMENT OF NORWAY')">
-            <div class="name">GOVERNMENT OF NORWAY</div>
-            <div class="meta">NBIM Sovereign Wealth Fund</div>
-          </div>
-          <div class="investor-chip" onclick="loadNetwork('FIDELITY FUNDS')">
-            <div class="name">FIDELITY FUNDS</div>
-            <div class="meta">Global Asset Management</div>
+        </div>
+      </div>
+
+      <div class="sidebar-card">
+        <h4>Top Institutional Investors</h4>
+        <div id="topInstitutionalInvestors">
+          <div style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 1rem;">
+            Loading top investors...
           </div>
         </div>
       </div>
@@ -314,8 +316,64 @@
         loadNetwork(e.params.data.id);
       });
 
+      fetchTopSearches();
+      fetchTopInvestors();
       initNetwork();
     });
+
+    async function fetchTopSearches() {
+      try {
+        const resp = await fetch('/api/top-searches?limit=5');
+        const data = await resp.json();
+        const container = $('#quickInvestors');
+
+        if (data.length > 0) {
+          container.empty();
+          data.forEach(item => {
+            const chip = $(`
+              <div class="investor-chip" onclick="selectInvestor('${item.query_text}')">
+                <div class="name">${item.query_text}</div>
+                <div class="meta">Popular Search (${item.search_count}x)</div>
+              </div>
+            `);
+            container.append(chip);
+          });
+        }
+      } catch (err) {
+        console.error('Failed to fetch top searches:', err);
+      }
+    }
+
+    async function fetchTopInvestors() {
+      try {
+        const resp = await fetch('/api/top-investors?limit=5');
+        const data = await resp.json();
+        const container = $('#topInstitutionalInvestors');
+
+        if (data.length > 0) {
+          container.empty();
+          data.forEach(item => {
+            const chip = $(`
+              <div class="investor-chip" onclick="selectInvestor('${item.investor_name}')">
+                <div class="name">${item.investor_name}</div>
+                <div class="meta">${item.companies_count} Companies • ${item.local_foreign === 'A' ? 'Foreign' : 'Local'}</div>
+              </div>
+            `);
+            container.append(chip);
+          });
+        }
+      } catch (err) {
+        console.error('Failed to fetch top investors:', err);
+        $('#topInstitutionalInvestors').html('<div style="font-size: 0.8rem; text-align:center; color: var(--red-500);">Failed to load</div>');
+      }
+    }
+
+    function selectInvestor(name) {
+      // Update Select2
+      const newOption = new Option(name, name, true, true);
+      $('#investorSelect').append(newOption).trigger('change');
+      loadNetwork(name);
+    }
 
     function initNetwork() {
       const container = document.getElementById('networkCanvas');
@@ -402,6 +460,7 @@
         network.fit();
       } catch (err) {
         console.error(err);
+        $('#activeNodeInfo').text(`Error loading network for: ${investorName}`);
       }
     }
 
