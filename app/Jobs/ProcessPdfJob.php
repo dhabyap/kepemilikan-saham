@@ -48,11 +48,12 @@ class ProcessPdfJob implements ShouldQueue
                 throw new \Exception("File not found at: " . $pdfPath);
             }
 
-            // Phase 1: EXTRACTION (Heavy lifting)
+            // Phase 1: EXTRACTION & PERSISTENCE
             // If data was already extracted, we skip this to save time
             $allRecords = $this->pdfUpload->extracted_data;
 
             if (empty($allRecords)) {
+                Log::info("ProcessPdfJob [{$this->pdfUpload->id}]: Phase 1 - Starting Extraction");
                 $parser = new Parser();
                 $pdf = $parser->parseFile($pdfPath);
 
@@ -150,11 +151,18 @@ class ProcessPdfJob implements ShouldQueue
                     throw new \Exception('No records extracted from PDF. Format mismatch.');
                 }
 
-                // Save JSON for persistence (user can view later)
-                $this->pdfUpload->update(['extracted_data' => $allRecords]);
+                // STEP 1: UPLOAD ALL JSON TO DATABASE FIRST
+                Log::info("ProcessPdfJob [{$this->pdfUpload->id}]: Saving " . count($allRecords) . " records to pdf_uploads table.");
+                $this->pdfUpload->update([
+                    'extracted_data' => $allRecords,
+                    'status' => 'processing'
+                ]);
             }
 
-            // Phase 2: BATCH INSERTION with Duplicate Prevention
+            // STEP 2: LOAD FROM DATABASE AND PROCESS PER BATCH
+            $allRecords = $this->pdfUpload->extracted_data;
+            Log::info("ProcessPdfJob [{$this->pdfUpload->id}]: Phase 2 - Starting Batch Insertion");
+
             $datesInPdf = array_unique(array_column($allRecords, 'date'));
             $existingRecords = Saham::whereIn('date', $datesInPdf)
                 ->select('date', 'share_code', 'investor_name')
@@ -173,15 +181,25 @@ class ProcessPdfJob implements ShouldQueue
                 }
             }
 
+            $totalToInsert = count($recordsToInsert);
             $insertedCount = 0;
-            if (!empty($recordsToInsert)) {
+
+            if ($totalToInsert > 0) {
+                Log::info("ProcessPdfJob [{$this->pdfUpload->id}]: Inserting $totalToInsert new records in batches.");
+
                 // Batch of 500 for database efficiency
                 $chunks = array_chunk($recordsToInsert, 500);
-                foreach ($chunks as $chunk) {
+                foreach ($chunks as $index => $chunk) {
                     Saham::insert($chunk);
                     $insertedCount += count($chunk);
+
+                    // Update progress in DB
                     $this->pdfUpload->update(['processed_count' => $insertedCount]);
+
+                    Log::info("ProcessPdfJob [{$this->pdfUpload->id}]: Batch " . ($index + 1) . " completed. Total progress: $insertedCount/$totalToInsert");
                 }
+            } else {
+                Log::info("ProcessPdfJob [{$this->pdfUpload->id}]: All records already exist in database.");
             }
 
             $this->pdfUpload->update([
