@@ -1,0 +1,240 @@
+<?php
+
+namespace App\Jobs;
+
+use App\Models\Saham;
+use App\Models\PdfUpload;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Smalot\PdfParser\Parser;
+
+class ProcessPdfJob implements ShouldQueue
+{
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    /**
+     * The number of seconds the job can run before timing out.
+     */
+    public $timeout = 3600; // 1 hour
+
+    protected $pdfUpload;
+
+    public function __construct(PdfUpload $pdfUpload)
+    {
+        $this->pdfUpload = $pdfUpload;
+    }
+
+    public function handle(): void
+    {
+        // Don't re-process if already done
+        if ($this->pdfUpload->status === 'completed')
+            return;
+
+        $this->pdfUpload->update(['status' => 'processing']);
+
+        try {
+            // Background workers have their own PHP limits
+            set_time_limit(0);
+            ini_set('memory_limit', '1024M');
+
+            $pdfPath = storage_path('app/' . $this->pdfUpload->file_path);
+
+            if (!file_exists($pdfPath)) {
+                throw new \Exception("File not found at: " . $pdfPath);
+            }
+
+            // Phase 1: EXTRACTION & PERSISTENCE
+            // If data was already extracted, we skip this to save time
+            $allRecords = $this->pdfUpload->extracted_data;
+
+            if (empty($allRecords)) {
+                Log::info("ProcessPdfJob [{$this->pdfUpload->id}]: Phase 1 - Starting Extraction");
+                $parser = new Parser();
+                $pdf = $parser->parseFile($pdfPath);
+
+                $allRecords = [];
+                $seenKeys = []; // To prevent duplicates within the SAME PDF
+
+                $pages = $pdf->getPages();
+                foreach ($pages as $page) {
+                    $text = $page->getText();
+                    $lines = explode("\n", $text);
+
+                    foreach ($lines as $line) {
+                        $line = trim($line);
+                        if (empty($line))
+                            continue;
+
+                        // Extraction Logic (Anchor-based regex)
+                        if (!preg_match('/^(\d{2}-[A-Za-z]{3}-\d{2,4})/', $line, $dateMatches))
+                            continue;
+
+                        $date = $dateMatches[1];
+                        $remaining = trim(substr($line, strlen($date)));
+
+                        if (!preg_match('/^([A-Z]{4})\s+/', $remaining, $codeMatches))
+                            continue;
+                        $shareCode = $codeMatches[1];
+                        $remaining = trim(substr($remaining, strlen($shareCode)));
+
+                        preg_match_all('/[\d.,]+/', $remaining, $numMatches);
+                        $numbers = $numMatches[0];
+                        if (count($numbers) < 4)
+                            continue;
+
+                        $percentageRaw = array_pop($numbers);
+                        $totalSharesRaw = array_pop($numbers);
+                        $holdingsScripRaw = array_pop($numbers);
+                        $holdingsScriplessRaw = array_pop($numbers);
+
+                        if (!preg_match('/\b(CP|ID|IB|IS|SC|FD|MF|PF|OT)\s+(L|A)\b/', $remaining, $anchorMatches, PREG_OFFSET_CAPTURE))
+                            continue;
+
+                        $type = $anchorMatches[1][0];
+                        $lf = $anchorMatches[2][0];
+                        $anchorPos = $anchorMatches[0][1];
+
+                        $beforeAnchor = trim(substr($remaining, 0, $anchorPos));
+                        $afterAnchor = trim(substr($remaining, $anchorPos + strlen($anchorMatches[0][0])));
+
+                        if (str_contains($beforeAnchor, ' Tbk ')) {
+                            $nameParts = explode(' Tbk ', $beforeAnchor, 2);
+                            $issuerName = $nameParts[0] . ' Tbk';
+                            $investorName = trim($nameParts[1]);
+                        } else {
+                            $issuerName = $beforeAnchor;
+                            $investorName = $beforeAnchor;
+                        }
+
+                        $firstNumPos = strcspn($afterAnchor, '0123456789');
+                        $geoInfo = trim(substr($afterAnchor, 0, $firstNumPos));
+
+                        $geoParts = explode(' ', $geoInfo);
+                        if (count($geoParts) >= 2) {
+                            $nationality = $geoParts[0];
+                            $domicile = implode(' ', array_slice($geoParts, 1));
+                        } else {
+                            $nationality = $geoInfo;
+                            $domicile = $geoInfo;
+                        }
+
+                        $record = [
+                            "date" => $date,
+                            "share_code" => $shareCode,
+                            "issuer_name" => mb_strcut($issuerName, 0, 255),
+                            "investor_name" => mb_strcut($investorName, 0, 255),
+                            "investor_type" => $type,
+                            "local_foreign" => $lf,
+                            "nationality" => mb_strcut($nationality, 0, 100),
+                            "domicile" => mb_strcut($domicile, 0, 100),
+                            "holdings_scripless" => $this->parseNumber($holdingsScriplessRaw),
+                            "holdings_scrip" => $this->parseNumber($holdingsScripRaw),
+                            "total_holding_shares" => $this->parseNumber($totalSharesRaw),
+                            "percentage" => $this->parsePercentage($percentageRaw),
+                        ];
+
+                        $key = "{$record['date']}|{$record['share_code']}|{$record['investor_name']}";
+                        if (isset($seenKeys[$key]))
+                            continue;
+                        $seenKeys[$key] = true;
+
+                        $allRecords[] = $record;
+                    }
+                }
+
+                if (empty($allRecords)) {
+                    throw new \Exception('No records extracted from PDF. Format mismatch.');
+                }
+
+                // STEP 1: UPLOAD ALL JSON TO DATABASE FIRST
+                Log::info("ProcessPdfJob [{$this->pdfUpload->id}]: Saving " . count($allRecords) . " records to pdf_uploads table.");
+                $this->pdfUpload->update([
+                    'extracted_data' => $allRecords,
+                    'status' => 'processing'
+                ]);
+            }
+
+            // STEP 2: LOAD FROM DATABASE AND PROCESS PER BATCH
+            $allRecords = $this->pdfUpload->extracted_data;
+            Log::info("ProcessPdfJob [{$this->pdfUpload->id}]: Phase 2 - Starting Batch Insertion");
+
+            $datesInPdf = array_unique(array_column($allRecords, 'date'));
+            $existingRecords = Saham::whereIn('date', $datesInPdf)
+                ->select('date', 'share_code', 'investor_name')
+                ->get()
+                ->map(function ($r) {
+                    return "{$r->date}|{$r->share_code}|{$r->investor_name}";
+                })
+                ->flip()
+                ->toArray();
+
+            $recordsToInsert = [];
+            foreach ($allRecords as $record) {
+                $key = "{$record['date']}|{$record['share_code']}|{$record['investor_name']}";
+                if (!isset($existingRecords[$key])) {
+                    $recordsToInsert[] = $record;
+                }
+            }
+
+            $totalToInsert = count($recordsToInsert);
+            $insertedCount = 0;
+
+            if ($totalToInsert > 0) {
+                Log::info("ProcessPdfJob [{$this->pdfUpload->id}]: Inserting $totalToInsert new records in batches.");
+
+                // Batch of 500 for database efficiency
+                $chunks = array_chunk($recordsToInsert, 500);
+                foreach ($chunks as $index => $chunk) {
+                    Saham::insert($chunk);
+                    $insertedCount += count($chunk);
+
+                    // Update progress in DB
+                    $this->pdfUpload->update(['processed_count' => $insertedCount]);
+
+                    Log::info("ProcessPdfJob [{$this->pdfUpload->id}]: Batch " . ($index + 1) . " completed. Total progress: $insertedCount/$totalToInsert");
+                }
+            } else {
+                Log::info("ProcessPdfJob [{$this->pdfUpload->id}]: All records already exist in database.");
+            }
+
+            $this->pdfUpload->update([
+                'status' => 'completed',
+                'processed_count' => $insertedCount
+            ]);
+
+            // Optional: Cleanup temp PDF after success
+            Storage::delete($this->pdfUpload->file_path);
+
+        } catch (\Throwable $e) {
+            Log::error("PDF Background Job Failed: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+            $this->pdfUpload->update([
+                'status' => 'failed',
+                'error_message' => $e->getMessage()
+            ]);
+            throw $e; // Re-throw to let the queue worker know it failed
+        }
+    }
+
+    private function parseNumber($s)
+    {
+        if (!$s)
+            return 0;
+        $s = str_replace(['.', ','], ['', '.'], trim($s));
+        $s = preg_replace('/[^0-9.]/', '', $s);
+        return (int) floatval($s);
+    }
+
+    private function parsePercentage($s)
+    {
+        if (!$s)
+            return 0.0;
+        $s = str_replace(',', '.', trim($s));
+        $s = preg_replace('/[^0-9.]/', '', $s);
+        return (float) $s;
+    }
+}

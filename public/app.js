@@ -1,5 +1,5 @@
 // ─────────────────────── HELPERS ───────────────────────
-const API = '';
+const API = window.CONFIG ? window.CONFIG.API_BASE : '';
 let selectedDate = '';
 
 function formatNumber(n) {

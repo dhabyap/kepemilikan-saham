@@ -1,3 +1,5 @@
+const API = window.CONFIG ? window.CONFIG.API_BASE : '/api';
+
 document.addEventListener('DOMContentLoaded', async () => {
   const token = localStorage.getItem('adminToken');
   if (!token) {
@@ -7,7 +9,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // --- Auth Verification ---
   try {
-    const res = await fetch('/api/verify', {
+    const res = await fetch(`${API}/verify`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (!res.ok) throw new Error('Token invalid');
@@ -91,6 +93,47 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
+  const uploadHistoryBody = document.getElementById('uploadHistoryBody');
+
+  async function loadUploadHistory() {
+    try {
+      const res = await fetch(`${API}/uploads`, { headers });
+      const data = await res.json();
+      
+      if (!data || data.length === 0) {
+        uploadHistoryBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No recent uploads.</td></tr>';
+        return;
+      }
+
+      uploadHistoryBody.innerHTML = '';
+      data.forEach(item => {
+        const tr = document.createElement('tr');
+        let statusColor = 'var(--text-muted)';
+        if (item.status === 'completed') statusColor = 'var(--accent-emerald)';
+        if (item.status === 'failed') statusColor = 'var(--accent-rose)';
+        if (item.status === 'processing') statusColor = 'var(--accent-navy)';
+
+        tr.innerHTML = `
+          <td>${item.original_name}</td>
+          <td><span style="color:${statusColor}; font-weight:700; text-transform:uppercase; font-size:0.75rem;">${item.status}</span></td>
+          <td class="number-cell">${item.processed_count || 0}</td>
+          <td>${new Date(item.created_at).toLocaleString('id-ID')}</td>
+        `;
+        uploadHistoryBody.appendChild(tr);
+      });
+
+      // If any is processing, poll again soon
+      if (data.some(d => d.status === 'processing' || d.status === 'pending')) {
+        setTimeout(loadUploadHistory, 3000);
+      }
+    } catch (err) {
+      console.error('History load error:', err);
+    }
+  }
+
+  // Initial history load
+  loadUploadHistory();
+
   uploadForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const file = fileInput.files[0];
@@ -104,24 +147,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     formData.append('pdfFile', file);
 
     uploadBtn.disabled = true;
-    uploadBtn.innerHTML = 'Memproses Extraction... 🔄';
-    uploadStatus.innerHTML = '<span style="color:var(--text-muted)">Sedang mengekstrak data JSON menggunakan AI. Proses ini bisa memakan waktu hingga beberapa menit. Tolong jangan tutup halaman ini.</span>';
+    uploadBtn.innerHTML = 'Uploading... 🔄';
+    uploadStatus.innerHTML = '<span style="color:var(--text-muted)">Uploading file ke server...</span>';
 
     try {
-      const response = await fetch('/api/upload-pdf', {
+      const response = await fetch(`${API}/upload-pdf`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}` 
-        },
+        headers: { 'Authorization': `Bearer ${token}` },
         body: formData 
       });
 
       const result = await response.json();
 
       if (response.ok) {
-        uploadStatus.innerHTML = `<span style="color:var(--accent-emerald)">Berhasil: ${result.message}</span>`;
+        let msg = `<span style="color:var(--accent-emerald)">Upload Berhasil!</span> <br> <small style="color:var(--text-muted)">File sedang diproses. </small>`;
+        
+        if (result.debug_queue === 'sync') {
+          msg += `<br><span style="color:var(--accent-rose); font-weight:bold;">PERINGATAN: Server menggunakan mode 'sync'.</span> <br> <small style="color:var(--text-muted)">Ini akan menyebabkan Timeout jika file besar. Harap ubah QUEUE_CONNECTION ke 'database' di .env server.</small>`;
+        } else {
+          msg += `<br><small style="color:var(--text-muted)">Mode: <b>Background (Success)</b>. Pantau status di tabel bawah.</small>`;
+        }
+        
+        uploadStatus.innerHTML = msg;
         fileInput.value = '';
         selectedFileName.textContent = '';
+        loadUploadHistory(); // Refresh history
       } else {
         throw new Error(result.error + ": " + (result.details || ''));
       }
@@ -129,7 +179,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       uploadStatus.innerHTML = `<span style="color:var(--accent-rose)">Gagal: ${error.message}</span>`;
     } finally {
       uploadBtn.disabled = false;
-      uploadBtn.innerHTML = '🚀 Upload & Timpa Data Lama';
+      uploadBtn.innerHTML = '🚀 Upload & Proses Data Baru';
     }
   });
 
@@ -144,7 +194,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     sahamTableBody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading data...</td></tr>';
     try {
       // Fetch latest top 100 for admin view 
-      const res = await fetch('/api/search?q=', { headers });
+      const res = await fetch(`${API}/search?q=`, { headers });
       const data = await res.json();
       
       sahamTableBody.innerHTML = '';
@@ -191,7 +241,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   window.deleteSaham = async (id) => {
     if(!confirm('Apakah Anda yakin ingin menghapus data saham ini secara permanen?')) return;
     try {
-      const res = await fetch(`/api/saham/${id}`, { method: 'DELETE', headers });
+      const res = await fetch(`${API}/saham/${id}`, { method: 'DELETE', headers });
       if (res.ok) {
         loadSahamData();
       } else {
@@ -218,7 +268,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     try {
-      const res = await fetch(`/api/saham/${id}`, {
+      const res = await fetch(`${API}/saham/${id}`, {
         method: 'PUT',
         headers,
         body: JSON.stringify(bodyArgs)
@@ -246,7 +296,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function loadKonglomeratData() {
     konglomeratTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Loading data...</td></tr>';
     try {
-      const res = await fetch('/api/konglomerat', { headers });
+      const res = await fetch(`${API}/konglomerat`, { headers });
       const data = await res.json();
       
       konglomeratTableBody.innerHTML = '';
@@ -298,7 +348,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   window.deleteKonglomerat = async (id) => {
     if(!confirm('Yakin ingin menghapus profil ini?')) return;
     try {
-      const res = await fetch(`/api/konglomerat/${id}`, { method: 'DELETE', headers });
+      const res = await fetch(`${API}/konglomerat/${id}`, { method: 'DELETE', headers });
       if (res.ok) {
         loadKonglomeratData();
       } else {
@@ -322,7 +372,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     const method = id ? 'PUT' : 'POST';
-    const url = id ? `/api/konglomerat/${id}` : '/api/konglomerat';
+    const url = id ? `${API}/konglomerat/${id}` : `${API}/konglomerat`;
 
     try {
       const res = await fetch(url, {
